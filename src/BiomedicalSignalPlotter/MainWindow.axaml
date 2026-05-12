@@ -6,11 +6,11 @@
         mc:Ignorable="d" d:DesignWidth="1000" d:DesignHeight="650"
         x:Class="BiomedicalSignalPlotter.MainWindow"
         Title="Arduino Biomedical Signal Plotter"
-        Width="1000"
-        Height="650"
-        MinWidth="780"
-        MinHeight="520">
-    <Grid RowDefinitions="Auto,Auto,Auto,*,Auto"
+        Width="1120"
+        Height="740"
+        MinWidth="960"
+        MinHeight="620">
+    <Grid RowDefinitions="Auto,Auto,Auto,Auto,*,Auto"
           RowSpacing="12"
           Margin="16">
         <TextBlock Grid.Row="0"
@@ -44,6 +44,74 @@
         </Grid>
 
         <Grid Grid.Row="2"
+              RowDefinitions="Auto,Auto"
+              RowSpacing="8">
+            <Grid Grid.Row="0"
+                  ColumnDefinitions="Auto,190,Auto,150,Auto,80,Auto,90,*"
+                  ColumnSpacing="8"
+                  VerticalAlignment="Center">
+                <TextBlock Grid.Column="0"
+                           Text="Signal mode"
+                           VerticalAlignment="Center" />
+                <ComboBox x:Name="SignalModeComboBox"
+                          Grid.Column="1"
+                          MinWidth="190"
+                          SelectionChanged="SignalModeComboBox_SelectionChanged" />
+                <TextBlock Grid.Column="2"
+                           Text="Display"
+                           VerticalAlignment="Center" />
+                <ComboBox x:Name="DisplayModeComboBox"
+                          Grid.Column="3"
+                          MinWidth="150"
+                          SelectionChanged="DisplayModeComboBox_SelectionChanged" />
+                <TextBlock Grid.Column="4"
+                           Text="ADC bits"
+                           VerticalAlignment="Center" />
+                <TextBox x:Name="AdcBitsTextBox"
+                         Grid.Column="5"
+                         Text="10"
+                         LostFocus="AdcConfigurationTextBox_LostFocus" />
+                <TextBlock Grid.Column="6"
+                           Text="Reference V"
+                           VerticalAlignment="Center" />
+                <TextBox x:Name="ReferenceVoltageTextBox"
+                         Grid.Column="7"
+                         Text="5.0"
+                         LostFocus="AdcConfigurationTextBox_LostFocus" />
+            </Grid>
+
+            <Grid Grid.Row="1"
+                  ColumnDefinitions="Auto,140,Auto,100,Auto,140,Auto,100,*"
+                  ColumnSpacing="8"
+                  VerticalAlignment="Center">
+                <TextBlock Grid.Column="0"
+                           Text="Channel 0"
+                           VerticalAlignment="Center" />
+                <TextBox x:Name="Channel0LabelTextBox"
+                         Grid.Column="1"
+                         TextChanged="ChannelConfigurationTextBox_TextChanged" />
+                <TextBlock Grid.Column="2"
+                           Text="Unit"
+                           VerticalAlignment="Center" />
+                <TextBox x:Name="Channel0UnitTextBox"
+                         Grid.Column="3"
+                         TextChanged="ChannelConfigurationTextBox_TextChanged" />
+                <TextBlock Grid.Column="4"
+                           Text="Channel 1"
+                           VerticalAlignment="Center" />
+                <TextBox x:Name="Channel1LabelTextBox"
+                         Grid.Column="5"
+                         TextChanged="ChannelConfigurationTextBox_TextChanged" />
+                <TextBlock Grid.Column="6"
+                           Text="Unit"
+                           VerticalAlignment="Center" />
+                <TextBox x:Name="Channel1UnitTextBox"
+                         Grid.Column="7"
+                         TextChanged="ChannelConfigurationTextBox_TextChanged" />
+            </Grid>
+        </Grid>
+
+        <Grid Grid.Row="3"
               ColumnDefinitions="Auto,Auto,Auto,Auto,*,Auto,Auto"
               ColumnSpacing="10"
               RowDefinitions="Auto"
@@ -75,10 +143,10 @@
         </Grid>
 
         <scottPlot:AvaPlot x:Name="SignalPlot"
-                           Grid.Row="3" />
+                           Grid.Row="4" />
 
         <TextBlock x:Name="StatusText"
-                   Grid.Row="4"
+                   Grid.Row="5"
                    Text="Ready."
                    TextWrapping="Wrap" />
     </Grid>

@@ -53,6 +53,37 @@ Run tests:
 dotnet test
 ```
 
+## Signal Modes And Display
+
+The app includes lightweight display presets so the same two-channel Arduino stream can be used in different lab activities:
+
+- Custom
+- Generic two-channel
+- EMG + Force/Pressure
+- ECG
+- PPG / Pulse Oximetry
+- Blood Pressure
+
+These presets only set display labels, units, and the default plot time window. They are not diagnostic algorithms and do not calculate heart rate, SpO2, blood pressure, EMG RMS, or other biomedical measurements.
+
+Custom mode lets users edit:
+
+- channel 0 label and unit
+- channel 1 label and unit
+- ADC bits
+- reference voltage
+- display mode
+
+If a preset is selected and a channel label or unit is edited manually, the app switches to Custom mode while preserving the edited text.
+
+Display mode can show raw ADC counts or voltage. Voltage display uses:
+
+```text
+voltage = raw_count * reference_voltage / (2^adc_bits - 1)
+```
+
+The included UNO R4 WiFi firmware configures `analogReadResolution(10)`, so the app default is 10 ADC bits. Change ADC bits and reference voltage if your firmware or lab hardware uses different settings.
+
 ## Recording Data
 
 The app can record samples from either simulated mode or a connected serial device.
@@ -67,10 +98,20 @@ Recording is separate from plotting, so the plot continues to refresh on its tim
 CSV exports use invariant-culture numeric formatting and include timestamps in seconds relative to the start of recording:
 
 ```text
+# mode=Generic two-channel
+# channel_0_label=Channel 0
+# channel_0_unit=ADC counts
+# channel_1_label=Channel 1
+# channel_1_unit=ADC counts
+# adc_bits=10
+# reference_voltage=5
+# display_mode=Raw ADC counts
 time_s,channel_0,channel_1,source
 0.000,512,310,serial
 0.004,514,311,serial
 ```
+
+Recorded channel values remain the captured source values even if the plot is displayed as voltage. The display configuration is included as `#` metadata above the CSV header.
 
 For simulated samples, the `source` column is `simulated`:
 

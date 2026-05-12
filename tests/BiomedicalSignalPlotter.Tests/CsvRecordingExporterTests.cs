@@ -66,6 +66,32 @@ public class CsvRecordingExporterTests
         Assert.Equal("0.000,512,310,serial", lines[1]);
     }
 
+    [Fact]
+    public void FormatCsv_WritesMetadataCommentsAboveHeader()
+    {
+        CsvRecordingMetadata metadata = new(
+            "Custom",
+            "EMG",
+            "ADC counts",
+            "Force",
+            "ADC counts",
+            10,
+            5.0,
+            "Raw ADC counts");
+
+        string[] lines = SplitLines(CsvRecordingExporter.FormatCsv([], metadata));
+
+        Assert.Equal("# mode=Custom", lines[0]);
+        Assert.Equal("# channel_0_label=EMG", lines[1]);
+        Assert.Equal("# channel_0_unit=ADC counts", lines[2]);
+        Assert.Equal("# channel_1_label=Force", lines[3]);
+        Assert.Equal("# channel_1_unit=ADC counts", lines[4]);
+        Assert.Equal("# adc_bits=10", lines[5]);
+        Assert.Equal("# reference_voltage=5", lines[6]);
+        Assert.Equal("# display_mode=Raw ADC counts", lines[7]);
+        Assert.Equal("time_s,channel_0,channel_1,source", lines[8]);
+    }
+
     private static string[] SplitLines(string text)
     {
         return text.Split(
