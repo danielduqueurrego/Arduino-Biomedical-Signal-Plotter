@@ -15,5 +15,6 @@
     <PackageReference Include="Avalonia.Fonts.Inter" Version="11.3.4" />
     <PackageReference Include="ScottPlot.Avalonia" Version="5.1.58" />
     <PackageReference Include="System.IO.Ports" Version="10.0.0" />
+    <PackageReference Include="Tmds.DBus.Protocol" Version="0.21.3" />
   </ItemGroup>
 </Project>
