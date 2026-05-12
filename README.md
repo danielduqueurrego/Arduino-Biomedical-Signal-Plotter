@@ -28,7 +28,7 @@ This app is designed for educational use in biomedical instrumentation laborator
 
 ## Development
 
-Version 0.1 currently proves the desktop app architecture with simulated two-channel data. Real serial reading is intentionally not implemented yet.
+Version 0.1 proves the desktop app architecture with simulated two-channel data and the first Arduino two-channel CSV serial pathway.
 
 Prerequisite:
 
@@ -51,6 +51,48 @@ Run tests:
 
 ```powershell
 dotnet test
+```
+
+## Arduino Serial Format
+
+The app expects numeric-only two-channel CSV rows:
+
+```text
+512,310
+514,311
+513,312
+```
+
+Blank lines, malformed lines, and metadata lines beginning with `#` are ignored by the parser. The firmware does not print a plain text header by default.
+
+## Arduino Firmware
+
+The initial Arduino sketch is in `firmware/arduino/TwoChannelCsvStreamer/`. It targets the Arduino UNO R4 WiFi, reads `A0` and `A1`, and streams raw ADC values at 250 Hz.
+
+Arduino CLI is only needed by developers or instructors uploading firmware. Students running a packaged app should not need Arduino CLI.
+
+List connected boards:
+
+```powershell
+arduino-cli board list
+```
+
+Compile the sketch:
+
+```powershell
+arduino-cli compile --fqbn arduino:renesas_uno:unor4wifi firmware/arduino/TwoChannelCsvStreamer
+```
+
+Upload the sketch, replacing `COM5` with the port reported by `arduino-cli board list`:
+
+```powershell
+arduino-cli upload -p COM5 --fqbn arduino:renesas_uno:unor4wifi firmware/arduino/TwoChannelCsvStreamer
+```
+
+On Windows PowerShell, the helper script detects a single connected UNO R4 WiFi, compiles, and uploads:
+
+```powershell
+.\scripts\upload-uno-r4-wifi.ps1
 ```
 
 ## Safety disclaimer

@@ -6,7 +6,23 @@ namespace BiomedicalSignalPlotter.Tests;
 public class CircularSignalBufferTests
 {
     [Fact]
-    public void Snapshot_ReturnsSamplesInChronologicalOrder()
+    public void Add_IncreasesCountAndStoresSamples()
+    {
+        CircularSignalBuffer buffer = new(capacity: 3);
+
+        buffer.Add(new SignalSample(0.0, 10.0, 20.0));
+        buffer.Add(new SignalSample(0.1, 11.0, 21.0));
+
+        SignalSnapshot snapshot = buffer.Snapshot();
+
+        Assert.Equal(2, buffer.Count);
+        Assert.Equal([0.0, 0.1], snapshot.TimeSeconds);
+        Assert.Equal([10.0, 11.0], snapshot.Channel1);
+        Assert.Equal([20.0, 21.0], snapshot.Channel2);
+    }
+
+    [Fact]
+    public void Add_WrapsAtCapacity()
     {
         CircularSignalBuffer buffer = new(capacity: 3);
 
@@ -21,6 +37,22 @@ public class CircularSignalBufferTests
         Assert.Equal([0.1, 0.2, 0.3], snapshot.TimeSeconds);
         Assert.Equal([11.0, 12.0, 13.0], snapshot.Channel1);
         Assert.Equal([21.0, 22.0, 23.0], snapshot.Channel2);
+    }
+
+    [Fact]
+    public void Snapshot_ReturnsSamplesInChronologicalOrder()
+    {
+        CircularSignalBuffer buffer = new(capacity: 5);
+
+        buffer.Add(new SignalSample(0.0, 10.0, 20.0));
+        buffer.Add(new SignalSample(0.1, 11.0, 21.0));
+        buffer.Add(new SignalSample(0.2, 12.0, 22.0));
+
+        SignalSnapshot snapshot = buffer.Snapshot();
+
+        Assert.Equal([0.0, 0.1, 0.2], snapshot.TimeSeconds);
+        Assert.Equal([10.0, 11.0, 12.0], snapshot.Channel1);
+        Assert.Equal([20.0, 21.0, 22.0], snapshot.Channel2);
     }
 
     [Fact]
