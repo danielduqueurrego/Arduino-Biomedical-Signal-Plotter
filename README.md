@@ -32,7 +32,7 @@ Version 0.1 currently proves the desktop app architecture with simulated two-cha
 
 Prerequisite:
 
-- .NET 8 SDK or newer
+- .NET 10 SDK
 
 Restore and build:
 
