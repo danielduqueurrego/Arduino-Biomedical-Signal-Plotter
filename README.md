@@ -53,6 +53,34 @@ Run tests:
 dotnet test
 ```
 
+## Recording Data
+
+The app can record samples from either simulated mode or a connected serial device.
+
+1. Click `Start Recording` while simulated data or serial data is running.
+2. Click `Stop Recording` to pause capture.
+3. Click `Save CSV` to export the recorded samples.
+4. Click `Clear Recording` to discard the current recording.
+
+Recording is separate from plotting, so the plot continues to refresh on its timer while samples are captured.
+
+CSV exports use invariant-culture numeric formatting and include timestamps in seconds relative to the start of recording:
+
+```text
+time_s,channel_0,channel_1,source
+0.000,512,310,serial
+0.004,514,311,serial
+```
+
+For simulated samples, the `source` column is `simulated`:
+
+```text
+time_s,channel_0,channel_1,source
+0.000,0.52,0.31,simulated
+```
+
+Exported data are for educational and laboratory analysis only.
+
 ## Arduino Serial Format
 
 The app expects numeric-only two-channel CSV rows:

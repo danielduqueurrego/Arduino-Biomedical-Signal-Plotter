@@ -10,7 +10,7 @@
         Height="650"
         MinWidth="780"
         MinHeight="520">
-    <Grid RowDefinitions="Auto,Auto,*,Auto"
+    <Grid RowDefinitions="Auto,Auto,Auto,*,Auto"
           RowSpacing="12"
           Margin="16">
         <TextBlock Grid.Row="0"
@@ -43,11 +43,42 @@
                     Click="SimulationButton_Click" />
         </Grid>
 
+        <Grid Grid.Row="2"
+              ColumnDefinitions="Auto,Auto,Auto,Auto,*,Auto,Auto"
+              ColumnSpacing="10"
+              RowDefinitions="Auto"
+              VerticalAlignment="Center">
+            <Button x:Name="StartRecordingButton"
+                    Grid.Column="0"
+                    Content="Start Recording"
+                    Click="StartRecordingButton_Click" />
+            <Button x:Name="StopRecordingButton"
+                    Grid.Column="1"
+                    Content="Stop Recording"
+                    Click="StopRecordingButton_Click" />
+            <Button x:Name="SaveRecordingButton"
+                    Grid.Column="2"
+                    Content="Save CSV"
+                    Click="SaveRecordingButton_Click" />
+            <Button x:Name="ClearRecordingButton"
+                    Grid.Column="3"
+                    Content="Clear Recording"
+                    Click="ClearRecordingButton_Click" />
+            <TextBlock x:Name="RecordingStatusText"
+                       Grid.Column="5"
+                       Text="Recording idle"
+                       VerticalAlignment="Center" />
+            <TextBlock x:Name="RecordedSampleCountText"
+                       Grid.Column="6"
+                       Text="0 samples"
+                       VerticalAlignment="Center" />
+        </Grid>
+
         <scottPlot:AvaPlot x:Name="SignalPlot"
-                           Grid.Row="2" />
+                           Grid.Row="3" />
 
         <TextBlock x:Name="StatusText"
-                   Grid.Row="3"
+                   Grid.Row="4"
                    Text="Ready."
                    TextWrapping="Wrap" />
     </Grid>

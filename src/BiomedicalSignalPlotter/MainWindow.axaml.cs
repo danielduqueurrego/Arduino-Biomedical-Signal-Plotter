@@ -1,7 +1,9 @@
 using Avalonia.Controls;
 using Avalonia.Interactivity;
+using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using BiomedicalSignalPlotter.Models;
+using BiomedicalSignalPlotter.Recording;
 using BiomedicalSignalPlotter.Serial;
 using BiomedicalSignalPlotter.Services;
 
@@ -13,6 +15,7 @@ public partial class MainWindow : Window
     private readonly CircularSignalBuffer _signalBuffer = new(BufferCapacity);
     private readonly SimulatedDataService _simulatedDataService = new();
     private readonly ISerialService _serialService = new SerialService();
+    private readonly RecordingService _recordingService = new();
     private readonly DispatcherTimer _plotRefreshTimer;
     private string _plotTitle = "Simulated two-channel data";
 
@@ -34,6 +37,7 @@ public partial class MainWindow : Window
         _plotRefreshTimer.Tick += PlotRefreshTimer_Tick;
         _plotRefreshTimer.Start();
         StartSimulation();
+        UpdateRecordingUi();
 
         Closed += MainWindow_Closed;
     }
@@ -49,11 +53,13 @@ public partial class MainWindow : Window
     private void SimulatedDataService_SampleGenerated(object? sender, SignalSample sample)
     {
         _signalBuffer.Add(sample);
+        _recordingService.Record(sample, RecordedSampleSource.Simulated);
     }
 
     private void SerialService_SampleReceived(object? sender, SignalSample sample)
     {
         _signalBuffer.Add(sample);
+        _recordingService.Record(sample, RecordedSampleSource.Serial);
     }
 
     private void SerialService_StatusChanged(object? sender, string status)
@@ -80,6 +86,7 @@ public partial class MainWindow : Window
         }
 
         SignalPlot.Refresh();
+        UpdateRecordingUi();
     }
 
     private void ConnectButton_Click(object? sender, RoutedEventArgs e)
@@ -176,6 +183,93 @@ public partial class MainWindow : Window
     {
         await _serialService.DisconnectAsync();
         ConnectButton.Content = "Connect";
+    }
+
+    private void StartRecordingButton_Click(object? sender, RoutedEventArgs e)
+    {
+        _recordingService.Start();
+        RecordingStatusText.Text = "Recording";
+        UpdateRecordingUi();
+    }
+
+    private void StopRecordingButton_Click(object? sender, RoutedEventArgs e)
+    {
+        _recordingService.Stop();
+        RecordingStatusText.Text = "Recording stopped";
+        UpdateRecordingUi();
+    }
+
+    private async void SaveRecordingButton_Click(object? sender, RoutedEventArgs e)
+    {
+        IReadOnlyList<RecordedSample> samples = _recordingService.Snapshot();
+        if (samples.Count == 0)
+        {
+            RecordingStatusText.Text = "No recorded samples to save";
+            UpdateRecordingUi();
+            return;
+        }
+
+        TopLevel? topLevel = TopLevel.GetTopLevel(this);
+        if (topLevel?.StorageProvider.CanSave != true)
+        {
+            RecordingStatusText.Text = "CSV save dialog is not available";
+            UpdateRecordingUi();
+            return;
+        }
+
+        IStorageFile? file = await topLevel.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+        {
+            Title = "Save Recorded CSV",
+            SuggestedFileName = $"biomedical-recording-{DateTime.Now:yyyyMMdd-HHmmss}.csv",
+            DefaultExtension = "csv",
+            ShowOverwritePrompt = true,
+            FileTypeChoices =
+            [
+                new FilePickerFileType("CSV Files")
+                {
+                    Patterns = ["*.csv"],
+                    MimeTypes = ["text/csv"]
+                }
+            ]
+        });
+
+        if (file is null)
+        {
+            RecordingStatusText.Text = "Save canceled";
+            UpdateRecordingUi();
+            return;
+        }
+
+        try
+        {
+            RecordingStatusText.Text = "Saving CSV...";
+            await using Stream stream = await file.OpenWriteAsync();
+            await CsvRecordingExporter.WriteAsync(stream, samples);
+            RecordingStatusText.Text = $"Saved {samples.Count} samples";
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            RecordingStatusText.Text = $"Save failed: {ex.Message}";
+        }
+
+        UpdateRecordingUi();
+    }
+
+    private void ClearRecordingButton_Click(object? sender, RoutedEventArgs e)
+    {
+        _recordingService.Clear();
+        RecordingStatusText.Text = _recordingService.IsRecording ? "Recording cleared and running" : "Recording cleared";
+        UpdateRecordingUi();
+    }
+
+    private void UpdateRecordingUi()
+    {
+        int count = _recordingService.Count;
+        RecordedSampleCountText.Text = count == 1 ? "1 sample" : $"{count} samples";
+        StartRecordingButton.IsEnabled = !_recordingService.IsRecording;
+        StopRecordingButton.IsEnabled = _recordingService.IsRecording;
+        SaveRecordingButton.IsEnabled = count > 0;
+        ClearRecordingButton.IsEnabled = count > 0 || _recordingService.IsRecording;
     }
 
     private async void MainWindow_Closed(object? sender, EventArgs e)
