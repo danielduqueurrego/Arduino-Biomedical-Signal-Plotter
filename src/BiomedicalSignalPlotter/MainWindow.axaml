@@ -1,0 +1,52 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:scottPlot="clr-namespace:ScottPlot.Avalonia;assembly=ScottPlot.Avalonia"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="1000" d:DesignHeight="650"
+        x:Class="BiomedicalSignalPlotter.MainWindow"
+        Title="Arduino Biomedical Signal Plotter"
+        Width="1000"
+        Height="650"
+        MinWidth="780"
+        MinHeight="520">
+    <Grid RowDefinitions="Auto,Auto,*,Auto"
+          RowSpacing="12"
+          Margin="16">
+        <TextBlock Grid.Row="0"
+                   Text="Arduino Biomedical Signal Plotter"
+                   FontSize="24"
+                   FontWeight="SemiBold" />
+
+        <Grid Grid.Row="1"
+              ColumnDefinitions="Auto,220,Auto,Auto,*"
+              ColumnSpacing="10"
+              RowDefinitions="Auto"
+              VerticalAlignment="Center">
+            <TextBlock Grid.Column="0"
+                       Text="Serial port"
+                       VerticalAlignment="Center" />
+            <ComboBox x:Name="SerialPortComboBox"
+                      Grid.Column="1"
+                      SelectedIndex="0">
+                <ComboBoxItem Content="Serial ports not loaded" />
+            </ComboBox>
+            <Button x:Name="ConnectButton"
+                    Grid.Column="2"
+                    Content="Connect / Disconnect"
+                    Click="ConnectButton_Click" />
+            <Button x:Name="SimulationButton"
+                    Grid.Column="3"
+                    Content="Start Simulation"
+                    Click="SimulationButton_Click" />
+        </Grid>
+
+        <scottPlot:AvaPlot x:Name="SignalPlot"
+                           Grid.Row="2" />
+
+        <TextBlock x:Name="StatusText"
+                   Grid.Row="3"
+                   Text="Ready. Real serial reading is not implemented yet."
+                   TextWrapping="Wrap" />
+    </Grid>
+</Window>
