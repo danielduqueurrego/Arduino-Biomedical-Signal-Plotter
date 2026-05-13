@@ -41,7 +41,8 @@ public partial class SignalSettingsWindow : Window
             Channels = configuration.Channels.ToArray(),
             PlotLayout = new PlotLayoutConfiguration(
                 configuration.PlotLayout.PlotCount,
-                configuration.PlotLayout.ChannelAssignments)
+                configuration.PlotLayout.ChannelAssignments,
+                configuration.PlotLayout.PlotPanels)
         };
         _sampleRateHz = sampleRateHz;
         _isReadOnly = isReadOnly;

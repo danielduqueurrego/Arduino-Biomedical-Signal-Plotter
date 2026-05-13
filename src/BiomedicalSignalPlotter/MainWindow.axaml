@@ -46,6 +46,10 @@
                         Content="Signal Settings"
                         Click="SignalSettingsButton_Click"
                         Margin="0,0,10,8" />
+                <Button x:Name="PlotDisplaySettingsButton"
+                        Content="Plot Display"
+                        Click="PlotDisplaySettingsButton_Click"
+                        Margin="0,0,10,8" />
                 <Button x:Name="ApplyDeviceSettingsButton"
                         Content="Apply Device Settings"
                         Click="ApplyDeviceSettingsButton_Click"

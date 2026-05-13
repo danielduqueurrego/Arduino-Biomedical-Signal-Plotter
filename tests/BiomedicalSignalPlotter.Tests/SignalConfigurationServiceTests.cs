@@ -129,4 +129,35 @@ public class SignalConfigurationServiceTests
         Assert.Equal(2, updated.ChannelCount);
         Assert.Equal(ChannelPlotAssignment.Plot2, updated.PlotLayout.ChannelAssignments[1]);
     }
+
+    [Theory]
+    [InlineData(2.0)]
+    [InlineData(5.0)]
+    [InlineData(10.0)]
+    [InlineData(30.0)]
+    [InlineData(12.5)]
+    public void ValidatePlotWindowSeconds_AcceptsPositiveValues(double plotWindowSeconds)
+    {
+        Assert.Equal(plotWindowSeconds, SignalConfigurationService.ValidatePlotWindowSeconds(plotWindowSeconds));
+    }
+
+    [Theory]
+    [InlineData(0.0)]
+    [InlineData(-1.0)]
+    public void ValidatePlotWindowSeconds_RejectsNonPositiveValues(double plotWindowSeconds)
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            SignalConfigurationService.ValidatePlotWindowSeconds(plotWindowSeconds));
+    }
+
+    [Fact]
+    public void ApplyPlotWindowSeconds_UpdatesDisplayOnlyWindow()
+    {
+        SignalConfiguration configuration = SignalConfigurationService.CreateDefault();
+
+        SignalConfiguration updated = SignalConfigurationService.ApplyPlotWindowSeconds(configuration, 5.0);
+
+        Assert.Equal(5.0, updated.PlotWindowSeconds);
+        Assert.Equal(configuration.ChannelCount, updated.ChannelCount);
+    }
 }

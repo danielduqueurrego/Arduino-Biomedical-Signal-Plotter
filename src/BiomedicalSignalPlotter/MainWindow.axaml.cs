@@ -160,7 +160,7 @@ public partial class MainWindow : Window
                 plot.Plot.Axes.AutoScale();
                 ApplyPlotWindow(plot, displayedSnapshot);
             }
-
+            ApplyYRange(plot, plotIndex);
             plot.Refresh();
         }
 
@@ -196,6 +196,16 @@ public partial class MainWindow : Window
         double lastTime = snapshot.TimeSeconds[^1];
         double firstVisibleTime = Math.Max(snapshot.TimeSeconds[0], lastTime - _signalConfiguration.PlotWindowSeconds);
         plot.Plot.Axes.SetLimitsX(firstVisibleTime, lastTime);
+    }
+
+    private void ApplyYRange(AvaPlot plot, int plotIndex)
+    {
+        PlotPanelConfiguration panel = _signalConfiguration.PlotLayout.PlotPanels[plotIndex];
+
+        if (!panel.UseAutoYRange && panel.ManualYMinimum < panel.ManualYMaximum)
+        {
+            plot.Plot.Axes.SetLimitsY(panel.ManualYMinimum, panel.ManualYMaximum);
+        }
     }
 
     private string GetYAxisLabel(int plotIndex)
@@ -512,6 +522,29 @@ public partial class MainWindow : Window
         UpdateWorkflowUi();
     }
 
+    private async void PlotDisplaySettingsButton_Click(object? sender, RoutedEventArgs e)
+    {
+        if (_isSavingRecording || _isUploadingFirmware)
+        {
+            StatusText.Text = "Wait for the current operation to finish before changing plot display settings.";
+            return;
+        }
+
+        PlotDisplaySettingsWindow dialog = new(_signalConfiguration);
+        SignalConfiguration? result = await dialog.ShowDialog<SignalConfiguration?>(this);
+
+        if (result is null)
+        {
+            return;
+        }
+
+        _signalConfiguration = result;
+        ConfigurePlots();
+        RefreshPlots();
+        StatusText.Text = $"Plot display updated: {_signalConfiguration.PlotWindowSeconds:0.###} second window.";
+        UpdateWorkflowUi();
+    }
+
     private async void ApplyDeviceSettingsButton_Click(object? sender, RoutedEventArgs e)
     {
         if (_recordingService.IsRecording)
@@ -676,6 +709,7 @@ public partial class MainWindow : Window
         SimulationButton.IsEnabled = !_isUploadingFirmware;
 
         SignalSettingsButton.IsEnabled = canEditMetadata;
+        PlotDisplaySettingsButton.IsEnabled = !_isSavingRecording && !_isUploadingFirmware;
         ApplyDeviceSettingsButton.IsEnabled = _serialService.IsConnected && canEditDeviceSettings;
 
         CheckArduinoCliButton.IsEnabled = !_isCheckingArduinoCli && !_isUploadingFirmware;

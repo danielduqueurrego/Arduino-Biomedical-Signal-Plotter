@@ -12,6 +12,13 @@ public class PlotLayoutConfigurationServiceTests
         Assert.Equal(1, configuration.PlotCount);
         Assert.All(configuration.ChannelAssignments, assignment =>
             Assert.Equal(ChannelPlotAssignment.Plot1, assignment));
+        Assert.Equal(3, configuration.PlotPanels.Length);
+        Assert.All(configuration.PlotPanels, panel =>
+        {
+            Assert.True(panel.UseAutoYRange);
+            Assert.Equal(0.0, panel.ManualYMinimum);
+            Assert.Equal(1.0, panel.ManualYMaximum);
+        });
     }
 
     [Theory]
@@ -92,5 +99,37 @@ public class PlotLayoutConfigurationServiceTests
         Assert.Equal(
             [ChannelPlotAssignment.Hidden, ChannelPlotAssignment.Plot1, ChannelPlotAssignment.Plot2],
             assignments);
+    }
+
+    [Fact]
+    public void ApplyPanelYRange_StoresManualRangePerPlot()
+    {
+        PlotLayoutConfiguration configuration = PlotLayoutConfigurationService.CreateDefault();
+
+        PlotLayoutConfiguration updated = PlotLayoutConfigurationService.ApplyPanelYRange(
+            configuration,
+            plotIndex: 0,
+            useAutoYRange: false,
+            manualYMinimum: -2.0,
+            manualYMaximum: 2.0);
+
+        Assert.False(updated.PlotPanels[0].UseAutoYRange);
+        Assert.Equal(-2.0, updated.PlotPanels[0].ManualYMinimum);
+        Assert.Equal(2.0, updated.PlotPanels[0].ManualYMaximum);
+        Assert.True(updated.PlotPanels[1].UseAutoYRange);
+    }
+
+    [Theory]
+    [InlineData(1.0, 1.0)]
+    [InlineData(2.0, 1.0)]
+    public void ApplyPanelYRange_RejectsInvalidManualRange(double yMinimum, double yMaximum)
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            PlotLayoutConfigurationService.ApplyPanelYRange(
+                PlotLayoutConfigurationService.CreateDefault(),
+                plotIndex: 0,
+                useAutoYRange: false,
+                manualYMinimum: yMinimum,
+                manualYMaximum: yMaximum));
     }
 }

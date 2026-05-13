@@ -36,6 +36,8 @@ The first version should prove that the app can:
 
 13\. Show 1 to 3 vertically stacked plots and allow active channels to be routed to Plot 1, Plot 2, Plot 3, or Hidden.
 
+14\. Allow display-only plot time window and per-subplot Y-axis range configuration.
+
 
 
 \## Not included in Version 0.1

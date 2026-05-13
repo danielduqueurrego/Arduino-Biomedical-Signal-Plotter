@@ -4,15 +4,21 @@ namespace BiomedicalSignalPlotter.Configuration;
 
 public sealed record PlotLayoutConfiguration
 {
-    public PlotLayoutConfiguration(int plotCount, IReadOnlyList<ChannelPlotAssignment> channelAssignments)
+    public PlotLayoutConfiguration(
+        int plotCount,
+        IReadOnlyList<ChannelPlotAssignment> channelAssignments,
+        IReadOnlyList<PlotPanelConfiguration>? plotPanels = null)
     {
         PlotCount = PlotLayoutConfigurationService.ValidatePlotCount(plotCount);
         ChannelAssignments = NormalizeAssignments(channelAssignments, PlotCount);
+        PlotPanels = NormalizePlotPanels(plotPanels);
     }
 
     public int PlotCount { get; }
 
     public ChannelPlotAssignment[] ChannelAssignments { get; }
+
+    public PlotPanelConfiguration[] PlotPanels { get; }
 
     private static ChannelPlotAssignment[] NormalizeAssignments(
         IReadOnlyList<ChannelPlotAssignment> channelAssignments,
@@ -38,5 +44,19 @@ public sealed record PlotLayoutConfiguration
         }
 
         return assignments;
+    }
+
+    private static PlotPanelConfiguration[] NormalizePlotPanels(IReadOnlyList<PlotPanelConfiguration>? plotPanels)
+    {
+        PlotPanelConfiguration[] panels = new PlotPanelConfiguration[PlotLayoutConfigurationService.MaximumPlotCount];
+
+        for (int i = 0; i < panels.Length; i++)
+        {
+            panels[i] = i < plotPanels?.Count
+                ? plotPanels[i]
+                : PlotLayoutConfigurationService.CreateDefaultPanel();
+        }
+
+        return panels;
     }
 }

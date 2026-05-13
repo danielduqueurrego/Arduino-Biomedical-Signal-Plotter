@@ -142,6 +142,25 @@ public static class SignalConfigurationService
         return configuration with { DisplayMode = displayMode };
     }
 
+    public static SignalConfiguration ApplyPlotWindowSeconds(
+        SignalConfiguration configuration,
+        double plotWindowSeconds)
+    {
+        return configuration with { PlotWindowSeconds = ValidatePlotWindowSeconds(plotWindowSeconds) };
+    }
+
+    public static double ValidatePlotWindowSeconds(double plotWindowSeconds)
+    {
+        if (!double.IsFinite(plotWindowSeconds) || plotWindowSeconds <= 0)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(plotWindowSeconds),
+                "Plot time window must be a positive number of seconds.");
+        }
+
+        return plotWindowSeconds;
+    }
+
     public static double ConvertRawToDisplayValue(double rawValue, SignalConfiguration configuration)
     {
         if (configuration.DisplayMode == SignalDisplayMode.RawAdcCounts)
@@ -286,7 +305,10 @@ public static class SignalConfigurationService
 
     private static PlotLayoutConfiguration CopyPlotLayout(PlotLayoutConfiguration plotLayout)
     {
-        return new PlotLayoutConfiguration(plotLayout.PlotCount, plotLayout.ChannelAssignments);
+        return new PlotLayoutConfiguration(
+            plotLayout.PlotCount,
+            plotLayout.ChannelAssignments,
+            plotLayout.PlotPanels);
     }
 
     private static string NormalizeText(string value)

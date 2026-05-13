@@ -7,12 +7,22 @@ public static class PlotLayoutConfigurationService
     public const int MinimumPlotCount = 1;
     public const int MaximumPlotCount = 3;
     public const int DefaultPlotCount = 1;
+    public const double DefaultManualYMinimum = 0.0;
+    public const double DefaultManualYMaximum = 1.0;
 
     public static PlotLayoutConfiguration CreateDefault()
     {
         return new PlotLayoutConfiguration(
             DefaultPlotCount,
             Enumerable.Repeat(ChannelPlotAssignment.Plot1, AnalogChannelLimits.Maximum).ToArray());
+    }
+
+    public static PlotPanelConfiguration CreateDefaultPanel()
+    {
+        return new PlotPanelConfiguration(
+            UseAutoYRange: true,
+            DefaultManualYMinimum,
+            DefaultManualYMaximum);
     }
 
     public static int ValidatePlotCount(int plotCount)
@@ -39,7 +49,7 @@ public static class PlotLayoutConfigurationService
                 : ChannelPlotAssignment.Plot1)
             .ToArray();
 
-        return new PlotLayoutConfiguration(plotCount, assignments);
+        return new PlotLayoutConfiguration(plotCount, assignments, configuration.PlotPanels);
     }
 
     public static PlotLayoutConfiguration AssignChannel(
@@ -52,7 +62,7 @@ public static class PlotLayoutConfigurationService
 
         ChannelPlotAssignment[] assignments = configuration.ChannelAssignments.ToArray();
         assignments[channelIndex] = assignment;
-        return new PlotLayoutConfiguration(configuration.PlotCount, assignments);
+        return new PlotLayoutConfiguration(configuration.PlotCount, assignments, configuration.PlotPanels);
     }
 
     public static PlotLayoutConfiguration AssignChannels(
@@ -67,7 +77,42 @@ public static class PlotLayoutConfigurationService
             normalizedAssignments[channelIndex] = assignments[channelIndex];
         }
 
-        return new PlotLayoutConfiguration(configuration.PlotCount, normalizedAssignments);
+        return new PlotLayoutConfiguration(configuration.PlotCount, normalizedAssignments, configuration.PlotPanels);
+    }
+
+    public static PlotLayoutConfiguration ApplyPanelYRange(
+        PlotLayoutConfiguration configuration,
+        int plotIndex,
+        bool useAutoYRange,
+        double manualYMinimum,
+        double manualYMaximum)
+    {
+        ValidatePlotIndex(plotIndex);
+
+        if (!useAutoYRange)
+        {
+            ValidateManualYRange(manualYMinimum, manualYMaximum);
+        }
+
+        PlotPanelConfiguration[] panels = configuration.PlotPanels.ToArray();
+        panels[plotIndex] = new PlotPanelConfiguration(useAutoYRange, manualYMinimum, manualYMaximum);
+
+        return new PlotLayoutConfiguration(
+            configuration.PlotCount,
+            configuration.ChannelAssignments,
+            panels);
+    }
+
+    public static void ValidateManualYRange(double manualYMinimum, double manualYMaximum)
+    {
+        if (!double.IsFinite(manualYMinimum) ||
+            !double.IsFinite(manualYMaximum) ||
+            manualYMinimum >= manualYMaximum)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(manualYMinimum),
+                "Manual Y minimum must be less than manual Y maximum.");
+        }
     }
 
     public static IReadOnlyList<ChannelPlotAssignment> GetAvailableAssignments(int plotCount)
@@ -120,6 +165,14 @@ public static class PlotLayoutConfigurationService
         if (channelIndex is < 0 or >= AnalogChannelLimits.Maximum)
         {
             throw new ArgumentOutOfRangeException(nameof(channelIndex), "Channel index must be between 0 and 5.");
+        }
+    }
+
+    private static void ValidatePlotIndex(int plotIndex)
+    {
+        if (plotIndex is < 0 or >= MaximumPlotCount)
+        {
+            throw new ArgumentOutOfRangeException(nameof(plotIndex), "Plot index must be between 0 and 2.");
         }
     }
 }
