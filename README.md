@@ -28,7 +28,7 @@ This app is designed for educational use in biomedical instrumentation laborator
 
 ## Development
 
-Version 0.1 proves the desktop app architecture with simulated two-channel data and the first Arduino two-channel CSV serial pathway.
+Version 0.1 proves the desktop app architecture with simulated data and the first Arduino numeric CSV serial pathway. The app supports 1 to 6 analog channels, with 2 channels as the default.
 
 Prerequisite:
 
@@ -55,7 +55,7 @@ dotnet test
 
 ## Signal Modes And Display
 
-The app includes lightweight display presets so the same two-channel Arduino stream can be used in different lab activities:
+The app includes lightweight display presets so the same Arduino stream can be used in different lab activities:
 
 - Custom
 - Generic two-channel
@@ -68,13 +68,17 @@ These presets only set display labels, units, and the default plot time window. 
 
 Custom mode lets users edit:
 
-- channel 0 label and unit
-- channel 1 label and unit
+- active channel labels and units
+- channel count from 1 to 6
 - ADC bits
 - reference voltage
 - display mode
 
 If a preset is selected and a channel label or unit is edited manually, the app switches to Custom mode while preserving the edited text.
+
+The channel count control selects how many values the app expects per serial row and how many channels are plotted and recorded. The default is 2. Single-channel presets such as ECG, PPG / Pulse Oximetry, and Blood Pressure default to 1 channel; Generic two-channel and EMG + Force/Pressure default to 2 channels.
+
+Choose the channel count before starting a recording. If recorded samples are present, clear the recording before changing signal mode or channel count so the exported CSV keeps one consistent shape.
 
 Display mode can show raw ADC counts or voltage. Voltage display uses:
 
@@ -99,6 +103,7 @@ CSV exports use invariant-culture numeric formatting and include timestamps in s
 
 ```text
 # mode=Generic two-channel
+# channel_count=2
 # channel_0_label=Channel 0
 # channel_0_unit=ADC counts
 # channel_1_label=Channel 1
@@ -120,23 +125,27 @@ time_s,channel_0,channel_1,source
 0.000,0.52,0.31,simulated
 ```
 
+For one active channel, the header is `time_s,channel_0,source`. For six active channels, the header is `time_s,channel_0,channel_1,channel_2,channel_3,channel_4,channel_5,source`.
+
 Exported data are for educational and laboratory analysis only.
 
 ## Arduino Serial Format
 
-The app expects numeric-only two-channel CSV rows:
+The app expects numeric-only CSV rows with exactly the selected channel count. Supported Arduino analog inputs are `A0` through `A5`, read contiguously from `A0`.
 
 ```text
+512
 512,310
-514,311
-513,312
+512,310,203,102,850,914
 ```
 
 Blank lines, malformed lines, and metadata lines beginning with `#` are ignored by the parser. The firmware does not print a plain text header by default.
 
 ## Arduino Firmware
 
-The initial Arduino sketch is in `firmware/arduino/TwoChannelCsvStreamer/`. It targets the Arduino UNO R4 WiFi, reads `A0` and `A1`, and streams raw ADC values at 250 Hz.
+The Arduino sketch is in `firmware/arduino/TwoChannelCsvStreamer/`. It targets the Arduino UNO R4 WiFi, reads a compile-time configured contiguous channel range from `A0` through `A5`, and streams raw ADC values at 250 Hz. The default firmware channel count is 2 (`A0,A1`) to preserve current behavior.
+
+Channel count is currently selected independently in the app and compile-time configured in firmware by changing `CHANNEL_COUNT` in the sketch. Dynamic Arduino reconfiguration will be added later.
 
 Arduino CLI is only needed by developers or instructors uploading firmware. Students running a packaged app should not need Arduino CLI.
 

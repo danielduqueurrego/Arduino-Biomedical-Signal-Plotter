@@ -8,10 +8,13 @@ public sealed class SimulatedDataService : IDisposable
     private CancellationTokenSource? _cancellationTokenSource;
     private Task? _generationTask;
     private long _sampleIndex;
+    private int _channelCount = AnalogChannelLimits.Default;
 
     public event EventHandler<SignalSample>? SampleGenerated;
 
     public double SampleRateHz { get; }
+
+    public int ChannelCount => Volatile.Read(ref _channelCount);
 
     public bool IsRunning { get; private set; }
 
@@ -23,6 +26,11 @@ public sealed class SimulatedDataService : IDisposable
         }
 
         SampleRateHz = sampleRateHz;
+    }
+
+    public void SetChannelCount(int channelCount)
+    {
+        Volatile.Write(ref _channelCount, AnalogChannelLimits.Validate(channelCount));
     }
 
     public void Start()
@@ -63,12 +71,17 @@ public sealed class SimulatedDataService : IDisposable
         }
     }
 
-    public static SignalSample CreateSample(long sampleIndex, double sampleRateHz)
+    public static SignalSample CreateSample(
+        long sampleIndex,
+        double sampleRateHz,
+        int channelCount = AnalogChannelLimits.Default)
     {
         if (sampleRateHz <= 0)
         {
             throw new ArgumentOutOfRangeException(nameof(sampleRateHz), "Sample rate must be greater than zero.");
         }
+
+        AnalogChannelLimits.Validate(channelCount);
 
         double timeSeconds = sampleIndex / sampleRateHz;
         double beatPhase = timeSeconds % 1.0;
@@ -80,12 +93,27 @@ public sealed class SimulatedDataService : IDisposable
         double tWave = 55.0 * GaussianPulse(beatPhase, 0.56, 0.075);
         double baseline = 18.0 * Math.Sin(TwoPi * 0.25 * timeSeconds);
 
-        double channel1 = 520.0 + baseline + pWave + qDip + rPeak + sDip + tWave;
-        double channel2 = 335.0
-            + 55.0 * Math.Sin(TwoPi * 0.55 * timeSeconds - 0.7)
-            + 14.0 * Math.Sin(TwoPi * 1.10 * timeSeconds);
+        double[] values = new double[channelCount];
+        values[0] = 520.0 + baseline + pWave + qDip + rPeak + sDip + tWave;
 
-        return new SignalSample(timeSeconds, channel1, channel2);
+        if (channelCount > 1)
+        {
+            values[1] = 335.0
+                + 55.0 * Math.Sin(TwoPi * 0.55 * timeSeconds - 0.7)
+                + 14.0 * Math.Sin(TwoPi * 1.10 * timeSeconds);
+        }
+
+        for (int channelIndex = 2; channelIndex < channelCount; channelIndex++)
+        {
+            double frequency = 0.2 + (channelIndex * 0.18);
+            double phaseOffset = channelIndex * 0.65;
+            double drift = 10.0 * Math.Sin(TwoPi * 0.05 * timeSeconds + phaseOffset);
+            values[channelIndex] = 480.0
+                + (35.0 + channelIndex * 4.0) * Math.Sin(TwoPi * frequency * timeSeconds + phaseOffset)
+                + drift;
+        }
+
+        return new SignalSample(timeSeconds, values);
     }
 
     public void Dispose()
@@ -100,7 +128,7 @@ public sealed class SimulatedDataService : IDisposable
 
         while (await timer.WaitForNextTickAsync(cancellationToken).ConfigureAwait(false))
         {
-            SignalSample sample = CreateSample(Interlocked.Increment(ref _sampleIndex), SampleRateHz);
+            SignalSample sample = CreateSample(Interlocked.Increment(ref _sampleIndex), SampleRateHz, ChannelCount);
             SampleGenerated?.Invoke(this, sample);
         }
     }

@@ -11,6 +11,8 @@ public interface ISerialService : IAsyncDisposable
 
     string? PortName { get; }
 
+    int ExpectedChannelCount { get; set; }
+
     string[] GetAvailablePorts();
 
     void Connect(string portName, int baudRate = 115_200);

@@ -2,10 +2,9 @@ namespace BiomedicalSignalPlotter.Recording;
 
 public sealed record CsvRecordingMetadata(
     string Mode,
-    string Channel0Label,
-    string Channel0Unit,
-    string Channel1Label,
-    string Channel1Unit,
+    int ChannelCount,
+    IReadOnlyList<string> ChannelLabels,
+    IReadOnlyList<string> ChannelUnits,
     int AdcBits,
     double ReferenceVoltage,
     string DisplayMode);

@@ -70,17 +70,23 @@ public sealed class RecordingService
         }
     }
 
-    public void Record(SignalSample sample, RecordedSampleSource source)
+    public void Record(SignalSample sample, RecordedSampleSource source, int channelCount)
     {
+        AnalogChannelLimits.Validate(channelCount);
+
         lock (_syncRoot)
         {
-            if (!IsRecording)
+            int targetChannelCount = _samples.Count > 0 ? _samples[0].ChannelCount : channelCount;
+
+            if (!IsRecording || channelCount != targetChannelCount || sample.ChannelCount < targetChannelCount)
             {
                 return;
             }
 
             double timeSeconds = _elapsedBeforeCurrentSegmentSeconds + _stopwatch.Elapsed.TotalSeconds;
-            _samples.Add(new RecordedSample(timeSeconds, sample.Channel1, sample.Channel2, source));
+            double[] values = new double[targetChannelCount];
+            Array.Copy(sample.Values, values, targetChannelCount);
+            _samples.Add(new RecordedSample(timeSeconds, values, source));
         }
     }
 

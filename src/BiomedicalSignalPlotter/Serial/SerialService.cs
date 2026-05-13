@@ -12,6 +12,7 @@ public sealed class SerialService : ISerialService
     private SerialPort? _serialPort;
     private CancellationTokenSource? _cancellationTokenSource;
     private Task? _readTask;
+    private int _expectedChannelCount = AnalogChannelLimits.Default;
 
     public event EventHandler<SignalSample>? SampleReceived;
     public event EventHandler<string>? StatusChanged;
@@ -19,6 +20,12 @@ public sealed class SerialService : ISerialService
     public bool IsConnected { get; private set; }
 
     public string? PortName { get; private set; }
+
+    public int ExpectedChannelCount
+    {
+        get => Volatile.Read(ref _expectedChannelCount);
+        set => Volatile.Write(ref _expectedChannelCount, AnalogChannelLimits.Validate(value));
+    }
 
     public string[] GetAvailablePorts()
     {
@@ -146,12 +153,11 @@ public sealed class SerialService : ISerialService
             try
             {
                 string line = serialPort.ReadLine();
-                if (_parser.TryParse(line, out SerialChannelValues values))
+                if (_parser.TryParse(line, ExpectedChannelCount, out SerialChannelValues? values))
                 {
                     SignalSample sample = new(
                         _stopwatch.Elapsed.TotalSeconds,
-                        values.Channel1,
-                        values.Channel2);
+                        values.Values);
 
                     SampleReceived?.Invoke(this, sample);
                 }

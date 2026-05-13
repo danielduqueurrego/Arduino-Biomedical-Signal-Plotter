@@ -2,8 +2,9 @@ namespace BiomedicalSignalPlotter.Services;
 
 public sealed record SignalSnapshot(
     double[] TimeSeconds,
-    double[] Channel1,
-    double[] Channel2)
+    double[][] Channels)
 {
     public int Count => TimeSeconds.Length;
+
+    public int ChannelCount => Channels.Length;
 }

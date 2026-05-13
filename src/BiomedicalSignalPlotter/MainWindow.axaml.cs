@@ -19,13 +19,19 @@ public partial class MainWindow : Window
     private readonly ISerialService _serialService = new SerialService();
     private readonly RecordingService _recordingService = new();
     private readonly DispatcherTimer _plotRefreshTimer;
+    private readonly int[] _channelCountOptions = Enumerable
+        .Range(AnalogChannelLimits.Minimum, AnalogChannelLimits.Maximum)
+        .ToArray();
     private readonly DisplayModeOption[] _displayModeOptions =
     [
         new(SignalDisplayMode.RawAdcCounts, "Raw ADC counts"),
         new(SignalDisplayMode.Voltage, "Voltage")
     ];
+    private TextBox[] _channelLabelTextBoxes = [];
+    private TextBox[] _channelUnitTextBoxes = [];
+    private Control[] _channelConfigurationPanels = [];
     private SignalConfiguration _signalConfiguration = SignalConfigurationService.CreateDefault();
-    private string _plotTitle = "Simulated two-channel data";
+    private string _plotTitle = "Simulated data";
     private bool _isUpdatingConfigurationUi;
 
     public MainWindow()
@@ -63,13 +69,13 @@ public partial class MainWindow : Window
     private void SimulatedDataService_SampleGenerated(object? sender, SignalSample sample)
     {
         _signalBuffer.Add(sample);
-        _recordingService.Record(sample, RecordedSampleSource.Simulated);
+        _recordingService.Record(sample, RecordedSampleSource.Simulated, _signalConfiguration.ChannelCount);
     }
 
     private void SerialService_SampleReceived(object? sender, SignalSample sample)
     {
         _signalBuffer.Add(sample);
-        _recordingService.Record(sample, RecordedSampleSource.Serial);
+        _recordingService.Record(sample, RecordedSampleSource.Serial, _signalConfiguration.ChannelCount);
     }
 
     private void SerialService_StatusChanged(object? sender, string status)
@@ -79,7 +85,7 @@ public partial class MainWindow : Window
 
     private void PlotRefreshTimer_Tick(object? sender, EventArgs e)
     {
-        SignalSnapshot rawSnapshot = _signalBuffer.Snapshot();
+        SignalSnapshot rawSnapshot = _signalBuffer.Snapshot(_signalConfiguration.ChannelCount);
         SignalSnapshot displayedSnapshot = CreateDisplayedSnapshot(rawSnapshot);
 
         SignalPlot.Plot.Clear();
@@ -87,11 +93,16 @@ public partial class MainWindow : Window
 
         if (displayedSnapshot.Count > 1)
         {
-            var channel0 = SignalPlot.Plot.Add.Scatter(displayedSnapshot.TimeSeconds, displayedSnapshot.Channel1);
-            channel0.LegendText = FormatLegendText(_signalConfiguration.Channel0.Label, 0);
+            for (int channelIndex = 0; channelIndex < displayedSnapshot.ChannelCount; channelIndex++)
+            {
+                var channelPlot = SignalPlot.Plot.Add.Scatter(
+                    displayedSnapshot.TimeSeconds,
+                    displayedSnapshot.Channels[channelIndex]);
 
-            var channel1 = SignalPlot.Plot.Add.Scatter(displayedSnapshot.TimeSeconds, displayedSnapshot.Channel2);
-            channel1.LegendText = FormatLegendText(_signalConfiguration.Channel1.Label, 1);
+                channelPlot.LegendText = FormatLegendText(
+                    _signalConfiguration.Channels[channelIndex].Label,
+                    channelIndex);
+            }
 
             SignalPlot.Plot.Axes.AutoScale();
             ApplyPlotWindow(displayedSnapshot);
@@ -108,16 +119,21 @@ public partial class MainWindow : Window
             return rawSnapshot;
         }
 
-        double[] channel0 = new double[rawSnapshot.Count];
-        double[] channel1 = new double[rawSnapshot.Count];
+        double[][] channels = Enumerable.Range(0, rawSnapshot.ChannelCount)
+            .Select(_ => new double[rawSnapshot.Count])
+            .ToArray();
 
-        for (int i = 0; i < rawSnapshot.Count; i++)
+        for (int channelIndex = 0; channelIndex < rawSnapshot.ChannelCount; channelIndex++)
         {
-            channel0[i] = SignalConfigurationService.ConvertRawToDisplayValue(rawSnapshot.Channel1[i], _signalConfiguration);
-            channel1[i] = SignalConfigurationService.ConvertRawToDisplayValue(rawSnapshot.Channel2[i], _signalConfiguration);
+            for (int sampleIndex = 0; sampleIndex < rawSnapshot.Count; sampleIndex++)
+            {
+                channels[channelIndex][sampleIndex] = SignalConfigurationService.ConvertRawToDisplayValue(
+                    rawSnapshot.Channels[channelIndex][sampleIndex],
+                    _signalConfiguration);
+            }
         }
 
-        return new SignalSnapshot(rawSnapshot.TimeSeconds, channel0, channel1);
+        return new SignalSnapshot(rawSnapshot.TimeSeconds, channels);
     }
 
     private void ApplyPlotWindow(SignalSnapshot snapshot)
@@ -134,9 +150,12 @@ public partial class MainWindow : Window
             return "Voltage (V)";
         }
 
-        return _signalConfiguration.Channel0.Unit == _signalConfiguration.Channel1.Unit
-            ? _signalConfiguration.Channel0.Unit
-            : "Value";
+        string firstUnit = _signalConfiguration.Channels[0].Unit;
+        bool allUnitsMatch = _signalConfiguration.Channels
+            .Take(_signalConfiguration.ChannelCount)
+            .All(channel => channel.Unit == firstUnit);
+
+        return allUnitsMatch ? firstUnit : "Value";
     }
 
     private string FormatLegendText(string label, int channelIndex)
@@ -168,11 +187,11 @@ public partial class MainWindow : Window
 
     private void StartSimulation()
     {
-        _signalBuffer.Clear();
-        _plotTitle = "Simulated two-channel data";
+        ApplyActiveChannelCount(clearBuffer: true);
+        _plotTitle = "Simulated data";
         _simulatedDataService.Start();
         SimulationButton.Content = "Stop Simulation";
-        StatusText.Text = "Simulation running at 200 Hz. Plot refreshes at approximately 30 Hz.";
+        StatusText.Text = $"Simulation running with {_signalConfiguration.ChannelCount} channel(s) at 200 Hz. Plot refreshes at approximately 30 Hz.";
     }
 
     private async Task StopSimulationAsync()
@@ -222,8 +241,8 @@ public partial class MainWindow : Window
                 await StopSimulationAsync();
             }
 
-            _signalBuffer.Clear();
-            _plotTitle = "Serial two-channel data";
+            ApplyActiveChannelCount(clearBuffer: true);
+            _plotTitle = "Serial data";
             _serialService.Connect(portName);
             ConnectButton.Content = "Disconnect";
             SimulationButton.Content = "Start Simulation";
@@ -303,7 +322,7 @@ public partial class MainWindow : Window
             await CsvRecordingExporter.WriteAsync(stream, samples, CreateRecordingMetadata());
             RecordingStatusText.Text = $"Saved {samples.Count} samples";
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
         {
             RecordingStatusText.Text = $"Save failed: {ex.Message}";
         }
@@ -326,12 +345,44 @@ public partial class MainWindow : Window
         StopRecordingButton.IsEnabled = _recordingService.IsRecording;
         SaveRecordingButton.IsEnabled = count > 0;
         ClearRecordingButton.IsEnabled = count > 0 || _recordingService.IsRecording;
+        SignalModeComboBox.IsEnabled = count == 0 && !_recordingService.IsRecording;
+        ChannelCountComboBox.IsEnabled = count == 0 && !_recordingService.IsRecording;
     }
 
     private void InitializeConfigurationUi()
     {
+        _channelLabelTextBoxes =
+        [
+            Channel0LabelTextBox,
+            Channel1LabelTextBox,
+            Channel2LabelTextBox,
+            Channel3LabelTextBox,
+            Channel4LabelTextBox,
+            Channel5LabelTextBox
+        ];
+        _channelUnitTextBoxes =
+        [
+            Channel0UnitTextBox,
+            Channel1UnitTextBox,
+            Channel2UnitTextBox,
+            Channel3UnitTextBox,
+            Channel4UnitTextBox,
+            Channel5UnitTextBox
+        ];
+        _channelConfigurationPanels =
+        [
+            Channel0Panel,
+            Channel1Panel,
+            Channel2Panel,
+            Channel3Panel,
+            Channel4Panel,
+            Channel5Panel
+        ];
+
         SignalModeComboBox.ItemsSource = SignalConfigurationService.AllPresets;
+        ChannelCountComboBox.ItemsSource = _channelCountOptions;
         DisplayModeComboBox.ItemsSource = _displayModeOptions;
+        ApplyActiveChannelCount(clearBuffer: false);
         UpdateConfigurationUi();
     }
 
@@ -341,11 +392,16 @@ public partial class MainWindow : Window
         try
         {
             SignalModeComboBox.SelectedItem = SignalConfigurationService.GetPreset(_signalConfiguration.Mode);
+            ChannelCountComboBox.SelectedItem = _signalConfiguration.ChannelCount;
             DisplayModeComboBox.SelectedItem = _displayModeOptions.Single(option => option.DisplayMode == _signalConfiguration.DisplayMode);
-            Channel0LabelTextBox.Text = _signalConfiguration.Channel0.Label;
-            Channel0UnitTextBox.Text = _signalConfiguration.Channel0.Unit;
-            Channel1LabelTextBox.Text = _signalConfiguration.Channel1.Label;
-            Channel1UnitTextBox.Text = _signalConfiguration.Channel1.Unit;
+
+            for (int i = 0; i < AnalogChannelLimits.Maximum; i++)
+            {
+                _channelLabelTextBoxes[i].Text = _signalConfiguration.Channels[i].Label;
+                _channelUnitTextBoxes[i].Text = _signalConfiguration.Channels[i].Unit;
+                _channelConfigurationPanels[i].IsVisible = i < _signalConfiguration.ChannelCount;
+            }
+
             AdcBitsTextBox.Text = _signalConfiguration.AdcBits.ToString(CultureInfo.InvariantCulture);
             ReferenceVoltageTextBox.Text = SignalConfigurationService.FormatReferenceVoltage(_signalConfiguration.ReferenceVoltage);
         }
@@ -362,7 +418,23 @@ public partial class MainWindow : Window
             return;
         }
 
-        _signalConfiguration = SignalConfigurationService.ApplyPreset(preset.Mode);
+        _signalConfiguration = preset.Mode == SignalMode.Custom
+            ? SignalConfigurationService.SwitchToCustomPreservingSettings(_signalConfiguration)
+            : SignalConfigurationService.ApplyPreset(preset.Mode);
+
+        ApplyActiveChannelCount(clearBuffer: true);
+        UpdateConfigurationUi();
+    }
+
+    private void ChannelCountComboBox_SelectionChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        if (_isUpdatingConfigurationUi || ChannelCountComboBox.SelectedItem is not int channelCount)
+        {
+            return;
+        }
+
+        _signalConfiguration = SignalConfigurationService.ApplyChannelCount(_signalConfiguration, channelCount);
+        ApplyActiveChannelCount(clearBuffer: true);
         UpdateConfigurationUi();
     }
 
@@ -385,10 +457,8 @@ public partial class MainWindow : Window
 
         _signalConfiguration = SignalConfigurationService.ApplyManualChannelTextEdit(
             _signalConfiguration,
-            Channel0LabelTextBox.Text ?? string.Empty,
-            Channel0UnitTextBox.Text ?? string.Empty,
-            Channel1LabelTextBox.Text ?? string.Empty,
-            Channel1UnitTextBox.Text ?? string.Empty);
+            _channelLabelTextBoxes.Select(textBox => textBox.Text ?? string.Empty).ToArray(),
+            _channelUnitTextBoxes.Select(textBox => textBox.Text ?? string.Empty).ToArray());
 
         _isUpdatingConfigurationUi = true;
         try
@@ -410,14 +480,32 @@ public partial class MainWindow : Window
         UpdateConfigurationUi();
     }
 
+    private void ApplyActiveChannelCount(bool clearBuffer)
+    {
+        _simulatedDataService.SetChannelCount(_signalConfiguration.ChannelCount);
+        _serialService.ExpectedChannelCount = _signalConfiguration.ChannelCount;
+
+        if (clearBuffer)
+        {
+            _signalBuffer.Clear();
+        }
+    }
+
     private CsvRecordingMetadata CreateRecordingMetadata()
     {
+        string[] labels = _signalConfiguration.Channels
+            .Take(_signalConfiguration.ChannelCount)
+            .Select(channel => channel.Label)
+            .ToArray();
+        string[] units = Enumerable.Range(0, _signalConfiguration.ChannelCount)
+            .Select(channelIndex => SignalConfigurationService.GetDisplayUnit(_signalConfiguration, channelIndex))
+            .ToArray();
+
         return new CsvRecordingMetadata(
             SignalConfigurationService.GetModeDisplayName(_signalConfiguration.Mode),
-            _signalConfiguration.Channel0.Label,
-            _signalConfiguration.Channel0.Unit,
-            _signalConfiguration.Channel1.Label,
-            _signalConfiguration.Channel1.Unit,
+            _signalConfiguration.ChannelCount,
+            labels,
+            units,
             _signalConfiguration.AdcBits,
             _signalConfiguration.ReferenceVoltage,
             SignalConfigurationService.GetDisplayModeText(_signalConfiguration.DisplayMode));

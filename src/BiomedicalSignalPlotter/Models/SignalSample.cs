@@ -1,6 +1,19 @@
 namespace BiomedicalSignalPlotter.Models;
 
-public readonly record struct SignalSample(
-    double TimeSeconds,
-    double Channel1,
-    double Channel2);
+public sealed class SignalSample
+{
+    public SignalSample(double timeSeconds, IReadOnlyList<double> values)
+    {
+        ArgumentNullException.ThrowIfNull(values);
+        AnalogChannelLimits.Validate(values.Count);
+
+        TimeSeconds = timeSeconds;
+        Values = values.ToArray();
+    }
+
+    public double TimeSeconds { get; }
+
+    public double[] Values { get; }
+
+    public int ChannelCount => Values.Length;
+}

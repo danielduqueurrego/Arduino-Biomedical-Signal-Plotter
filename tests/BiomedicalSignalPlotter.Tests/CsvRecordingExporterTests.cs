@@ -11,8 +11,8 @@ public class CsvRecordingExporterTests
     {
         RecordedSample[] samples =
         [
-            new(0.0, 512.0, 310.0, RecordedSampleSource.Serial),
-            new(0.004, 0.52, 0.31, RecordedSampleSource.Simulated)
+            new(0.0, [512.0, 310.0], RecordedSampleSource.Serial),
+            new(0.004, [0.52, 0.31], RecordedSampleSource.Simulated)
         ];
 
         string[] lines = SplitLines(CsvRecordingExporter.FormatCsv(samples));
@@ -20,6 +20,27 @@ public class CsvRecordingExporterTests
         Assert.Equal("time_s,channel_0,channel_1,source", lines[0]);
         Assert.Equal("0.000,512,310,serial", lines[1]);
         Assert.Equal("0.004,0.52,0.31,simulated", lines[2]);
+    }
+
+    [Theory]
+    [InlineData(1, "time_s,channel_0,source")]
+    [InlineData(2, "time_s,channel_0,channel_1,source")]
+    [InlineData(6, "time_s,channel_0,channel_1,channel_2,channel_3,channel_4,channel_5,source")]
+    public void BuildHeader_WritesVariableChannelHeaders(int channelCount, string expectedHeader)
+    {
+        Assert.Equal(expectedHeader, CsvRecordingExporter.BuildHeader(channelCount));
+    }
+
+    [Fact]
+    public void FormatCsv_WritesSixChannelRows()
+    {
+        string[] lines = SplitLines(CsvRecordingExporter.FormatCsv(
+        [
+            new RecordedSample(0.004, [512.0, 310.0, 203.0, 102.0, 850.0, 914.0], RecordedSampleSource.Serial)
+        ]));
+
+        Assert.Equal("time_s,channel_0,channel_1,channel_2,channel_3,channel_4,channel_5,source", lines[0]);
+        Assert.Equal("0.004,512,310,203,102,850,914,serial", lines[1]);
     }
 
     [Fact]
@@ -35,7 +56,7 @@ public class CsvRecordingExporterTests
 
             string csv = CsvRecordingExporter.FormatCsv(
             [
-                new RecordedSample(1.25, 0.52, 0.31, RecordedSampleSource.Simulated)
+                new RecordedSample(1.25, [0.52, 0.31], RecordedSampleSource.Simulated)
             ]);
 
             Assert.Contains("1.250,0.52,0.31,simulated", csv);
@@ -53,7 +74,7 @@ public class CsvRecordingExporterTests
     {
         RecordedSample[] samples =
         [
-            new(0.0, 512.0, 310.0, RecordedSampleSource.Serial)
+            new(0.0, [512.0, 310.0], RecordedSampleSource.Serial)
         ];
 
         await using MemoryStream stream = new();
@@ -71,10 +92,9 @@ public class CsvRecordingExporterTests
     {
         CsvRecordingMetadata metadata = new(
             "Custom",
-            "EMG",
-            "ADC counts",
-            "Force",
-            "ADC counts",
+            2,
+            ["EMG", "Force"],
+            ["ADC counts", "ADC counts"],
             10,
             5.0,
             "Raw ADC counts");
@@ -82,14 +102,15 @@ public class CsvRecordingExporterTests
         string[] lines = SplitLines(CsvRecordingExporter.FormatCsv([], metadata));
 
         Assert.Equal("# mode=Custom", lines[0]);
-        Assert.Equal("# channel_0_label=EMG", lines[1]);
-        Assert.Equal("# channel_0_unit=ADC counts", lines[2]);
-        Assert.Equal("# channel_1_label=Force", lines[3]);
-        Assert.Equal("# channel_1_unit=ADC counts", lines[4]);
-        Assert.Equal("# adc_bits=10", lines[5]);
-        Assert.Equal("# reference_voltage=5", lines[6]);
-        Assert.Equal("# display_mode=Raw ADC counts", lines[7]);
-        Assert.Equal("time_s,channel_0,channel_1,source", lines[8]);
+        Assert.Equal("# channel_count=2", lines[1]);
+        Assert.Equal("# channel_0_label=EMG", lines[2]);
+        Assert.Equal("# channel_0_unit=ADC counts", lines[3]);
+        Assert.Equal("# channel_1_label=Force", lines[4]);
+        Assert.Equal("# channel_1_unit=ADC counts", lines[5]);
+        Assert.Equal("# adc_bits=10", lines[6]);
+        Assert.Equal("# reference_voltage=5", lines[7]);
+        Assert.Equal("# display_mode=Raw ADC counts", lines[8]);
+        Assert.Equal("time_s,channel_0,channel_1,source", lines[9]);
     }
 
     private static string[] SplitLines(string text)

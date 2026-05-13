@@ -1,3 +1,17 @@
+using BiomedicalSignalPlotter.Models;
+
 namespace BiomedicalSignalPlotter.Serial;
 
-public readonly record struct SerialChannelValues(double Channel1, double Channel2);
+public sealed class SerialChannelValues
+{
+    public SerialChannelValues(IReadOnlyList<double> values)
+    {
+        ArgumentNullException.ThrowIfNull(values);
+        AnalogChannelLimits.Validate(values.Count);
+        Values = values.ToArray();
+    }
+
+    public double[] Values { get; }
+
+    public int ChannelCount => Values.Length;
+}

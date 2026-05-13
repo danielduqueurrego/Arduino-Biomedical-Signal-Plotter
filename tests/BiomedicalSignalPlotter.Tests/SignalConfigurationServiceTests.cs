@@ -25,6 +25,7 @@ public class SignalConfigurationServiceTests
         SignalConfiguration configuration = SignalConfigurationService.CreateCustomDefault();
 
         Assert.Equal(SignalMode.Custom, configuration.Mode);
+        Assert.Equal(2, configuration.ChannelCount);
         Assert.Equal("Channel 0", configuration.Channel0.Label);
         Assert.Equal("Channel 1", configuration.Channel1.Label);
         Assert.Equal("ADC counts", configuration.Channel0.Unit);
@@ -40,11 +41,25 @@ public class SignalConfigurationServiceTests
         SignalConfiguration configuration = SignalConfigurationService.ApplyPreset(SignalMode.Ecg);
 
         Assert.Equal(SignalMode.Ecg, configuration.Mode);
+        Assert.Equal(1, configuration.ChannelCount);
         Assert.Equal("ECG", configuration.Channel0.Label);
         Assert.Equal("Auxiliary", configuration.Channel1.Label);
         Assert.Equal("ADC counts", configuration.Channel0.Unit);
         Assert.Equal("ADC counts", configuration.Channel1.Unit);
         Assert.Equal(6.0, configuration.PlotWindowSeconds);
+    }
+
+    [Theory]
+    [InlineData(SignalMode.GenericTwoChannel, 2)]
+    [InlineData(SignalMode.EmgForcePressure, 2)]
+    [InlineData(SignalMode.Ecg, 1)]
+    [InlineData(SignalMode.PpgPulseOximetry, 1)]
+    [InlineData(SignalMode.BloodPressure, 1)]
+    public void ApplyPreset_ReturnsExpectedChannelCount(SignalMode mode, int expectedChannelCount)
+    {
+        SignalConfiguration configuration = SignalConfigurationService.ApplyPreset(mode);
+
+        Assert.Equal(expectedChannelCount, configuration.ChannelCount);
     }
 
     [Fact]
@@ -54,15 +69,35 @@ public class SignalConfigurationServiceTests
 
         SignalConfiguration edited = SignalConfigurationService.ApplyManualChannelTextEdit(
             preset,
-            "Raw EMG",
-            "mV",
-            "Grip force",
-            "N");
+            ["Raw EMG", "Grip force"],
+            ["mV", "N"]);
 
         Assert.Equal(SignalMode.Custom, edited.Mode);
         Assert.Equal("Raw EMG", edited.Channel0.Label);
         Assert.Equal("mV", edited.Channel0.Unit);
         Assert.Equal("Grip force", edited.Channel1.Label);
         Assert.Equal("N", edited.Channel1.Unit);
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(6)]
+    public void ApplyChannelCount_AcceptsSupportedCounts(int channelCount)
+    {
+        SignalConfiguration configuration = SignalConfigurationService.ApplyChannelCount(
+            SignalConfigurationService.CreateDefault(),
+            channelCount);
+
+        Assert.Equal(SignalMode.Custom, configuration.Mode);
+        Assert.Equal(channelCount, configuration.ChannelCount);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(7)]
+    public void ApplyChannelCount_RejectsUnsupportedCounts(int channelCount)
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            SignalConfigurationService.ApplyChannelCount(SignalConfigurationService.CreateDefault(), channelCount));
     }
 }

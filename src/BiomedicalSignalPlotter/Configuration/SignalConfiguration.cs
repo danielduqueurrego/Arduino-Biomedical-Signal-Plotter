@@ -2,9 +2,14 @@ namespace BiomedicalSignalPlotter.Configuration;
 
 public sealed record SignalConfiguration(
     SignalMode Mode,
-    ChannelConfiguration Channel0,
-    ChannelConfiguration Channel1,
+    ChannelConfiguration[] Channels,
+    int ChannelCount,
     int AdcBits,
     double ReferenceVoltage,
     SignalDisplayMode DisplayMode,
-    double PlotWindowSeconds);
+    double PlotWindowSeconds)
+{
+    public ChannelConfiguration Channel0 => Channels[0];
+
+    public ChannelConfiguration Channel1 => Channels[1];
+}

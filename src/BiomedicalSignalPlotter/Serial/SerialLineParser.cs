@@ -1,12 +1,18 @@
 using System.Globalization;
+using System.Diagnostics.CodeAnalysis;
+using BiomedicalSignalPlotter.Models;
 
 namespace BiomedicalSignalPlotter.Serial;
 
 public sealed class SerialLineParser
 {
-    public bool TryParse(string? line, out SerialChannelValues values)
+    public bool TryParse(
+        string? line,
+        int expectedChannelCount,
+        [NotNullWhen(true)] out SerialChannelValues? values)
     {
-        values = default;
+        AnalogChannelLimits.Validate(expectedChannelCount);
+        values = null;
 
         if (string.IsNullOrWhiteSpace(line))
         {
@@ -20,18 +26,21 @@ public sealed class SerialLineParser
         }
 
         string[] parts = trimmed.Split(',');
-        if (parts.Length != 2)
+        if (parts.Length != expectedChannelCount)
         {
             return false;
         }
 
-        if (!TryParseFiniteDouble(parts[0], out double channel1) ||
-            !TryParseFiniteDouble(parts[1], out double channel2))
+        double[] parsedValues = new double[expectedChannelCount];
+        for (int i = 0; i < parts.Length; i++)
         {
-            return false;
+            if (!TryParseFiniteDouble(parts[i], out parsedValues[i]))
+            {
+                return false;
+            }
         }
 
-        values = new SerialChannelValues(channel1, channel2);
+        values = new SerialChannelValues(parsedValues);
         return true;
     }
 

@@ -1,21 +1,23 @@
 using System.Globalization;
 using System.Text;
+using BiomedicalSignalPlotter.Models;
 
 namespace BiomedicalSignalPlotter.Recording;
 
 public static class CsvRecordingExporter
 {
-    public const string Header = "time_s,channel_0,channel_1,source";
-
     public static string FormatCsv(IEnumerable<RecordedSample> samples, CsvRecordingMetadata? metadata = null)
     {
+        RecordedSample[] sampleArray = samples.ToArray();
+        int channelCount = ResolveChannelCount(sampleArray, metadata);
+
         StringBuilder builder = new();
         AppendMetadata(builder, metadata);
-        builder.AppendLine(Header);
+        builder.AppendLine(BuildHeader(channelCount));
 
-        foreach (RecordedSample sample in samples)
+        foreach (RecordedSample sample in sampleArray)
         {
-            builder.AppendLine(FormatRow(sample));
+            builder.AppendLine(FormatRow(sample, channelCount));
         }
 
         return builder.ToString();
@@ -27,6 +29,8 @@ public static class CsvRecordingExporter
         CsvRecordingMetadata? metadata = null,
         CancellationToken cancellationToken = default)
     {
+        int channelCount = ResolveChannelCount(samples, metadata);
+
         await using StreamWriter writer = new(
             stream,
             new UTF8Encoding(encoderShouldEmitUTF8Identifier: false),
@@ -41,24 +45,39 @@ public static class CsvRecordingExporter
             }
         }
 
-        await writer.WriteLineAsync(Header).ConfigureAwait(false);
+        await writer.WriteLineAsync(BuildHeader(channelCount)).ConfigureAwait(false);
 
         foreach (RecordedSample sample in samples)
         {
-            await writer.WriteLineAsync(FormatRow(sample)).ConfigureAwait(false);
+            await writer.WriteLineAsync(FormatRow(sample, channelCount)).ConfigureAwait(false);
         }
 
         await writer.FlushAsync(cancellationToken).ConfigureAwait(false);
     }
 
-    private static string FormatRow(RecordedSample sample)
+    public static string BuildHeader(int channelCount)
     {
-        return string.Join(
-            ',',
-            FormatTime(sample.TimeSeconds),
-            FormatChannel(sample.Channel0),
-            FormatChannel(sample.Channel1),
-            FormatSource(sample.Source));
+        AnalogChannelLimits.Validate(channelCount);
+
+        string[] channelHeaders = Enumerable.Range(0, channelCount)
+            .Select(channelIndex => $"channel_{channelIndex}")
+            .ToArray();
+
+        return string.Join(',', ["time_s", .. channelHeaders, "source"]);
+    }
+
+    private static string FormatRow(RecordedSample sample, int channelCount)
+    {
+        if (sample.ChannelCount != channelCount)
+        {
+            throw new InvalidOperationException("Recorded sample channel count does not match the CSV channel count.");
+        }
+
+        string[] channelValues = sample.Values
+            .Select(FormatChannel)
+            .ToArray();
+
+        return string.Join(',', [FormatTime(sample.TimeSeconds), .. channelValues, FormatSource(sample.Source)]);
     }
 
     private static void AppendMetadata(StringBuilder builder, CsvRecordingMetadata? metadata)
@@ -76,11 +95,17 @@ public static class CsvRecordingExporter
 
     private static IEnumerable<string> FormatMetadataLines(CsvRecordingMetadata metadata)
     {
+        AnalogChannelLimits.Validate(metadata.ChannelCount);
+
         yield return $"# mode={SanitizeMetadataValue(metadata.Mode)}";
-        yield return $"# channel_0_label={SanitizeMetadataValue(metadata.Channel0Label)}";
-        yield return $"# channel_0_unit={SanitizeMetadataValue(metadata.Channel0Unit)}";
-        yield return $"# channel_1_label={SanitizeMetadataValue(metadata.Channel1Label)}";
-        yield return $"# channel_1_unit={SanitizeMetadataValue(metadata.Channel1Unit)}";
+        yield return $"# channel_count={metadata.ChannelCount.ToString(CultureInfo.InvariantCulture)}";
+
+        for (int channelIndex = 0; channelIndex < metadata.ChannelCount; channelIndex++)
+        {
+            yield return $"# channel_{channelIndex}_label={SanitizeMetadataValue(GetMetadataValue(metadata.ChannelLabels, channelIndex, $"Channel {channelIndex}"))}";
+            yield return $"# channel_{channelIndex}_unit={SanitizeMetadataValue(GetMetadataValue(metadata.ChannelUnits, channelIndex, "ADC counts"))}";
+        }
+
         yield return $"# adc_bits={metadata.AdcBits.ToString(CultureInfo.InvariantCulture)}";
         yield return $"# reference_voltage={metadata.ReferenceVoltage.ToString("0.##########", CultureInfo.InvariantCulture)}";
         yield return $"# display_mode={SanitizeMetadataValue(metadata.DisplayMode)}";
@@ -112,5 +137,26 @@ public static class CsvRecordingExporter
             .Replace('\r', ' ')
             .Replace('\n', ' ')
             .Trim();
+    }
+
+    private static int ResolveChannelCount(IReadOnlyList<RecordedSample> samples, CsvRecordingMetadata? metadata)
+    {
+        int channelCount = metadata?.ChannelCount
+            ?? samples.FirstOrDefault()?.ChannelCount
+            ?? AnalogChannelLimits.Default;
+
+        AnalogChannelLimits.Validate(channelCount);
+
+        if (samples.Any(sample => sample.ChannelCount != channelCount))
+        {
+            throw new InvalidOperationException("All recorded samples must have the same channel count for CSV export.");
+        }
+
+        return channelCount;
+    }
+
+    private static string GetMetadataValue(IReadOnlyList<string> values, int index, string fallback)
+    {
+        return index < values.Count ? values[index] : fallback;
     }
 }

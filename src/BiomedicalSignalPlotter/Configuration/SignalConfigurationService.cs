@@ -1,4 +1,5 @@
 using System.Globalization;
+using BiomedicalSignalPlotter.Models;
 
 namespace BiomedicalSignalPlotter.Configuration;
 
@@ -13,6 +14,7 @@ public static class SignalConfigurationService
         CreatePreset(
             SignalMode.Custom,
             "Custom",
+            AnalogChannelLimits.Default,
             "Channel 0",
             "Channel 1",
             "ADC counts",
@@ -21,6 +23,7 @@ public static class SignalConfigurationService
         CreatePreset(
             SignalMode.GenericTwoChannel,
             "Generic two-channel",
+            2,
             "Channel 0",
             "Channel 1",
             "ADC counts",
@@ -29,6 +32,7 @@ public static class SignalConfigurationService
         CreatePreset(
             SignalMode.EmgForcePressure,
             "EMG + Force/Pressure",
+            2,
             "EMG",
             "Force/Pressure",
             "ADC counts",
@@ -37,6 +41,7 @@ public static class SignalConfigurationService
         CreatePreset(
             SignalMode.Ecg,
             "ECG",
+            1,
             "ECG",
             "Auxiliary",
             "ADC counts",
@@ -45,6 +50,7 @@ public static class SignalConfigurationService
         CreatePreset(
             SignalMode.PpgPulseOximetry,
             "PPG / Pulse Oximetry",
+            1,
             "PPG",
             "Auxiliary PPG",
             "ADC counts",
@@ -53,6 +59,7 @@ public static class SignalConfigurationService
         CreatePreset(
             SignalMode.BloodPressure,
             "Blood Pressure",
+            1,
             "Pressure",
             "Pulse/Reference",
             "ADC counts",
@@ -64,12 +71,12 @@ public static class SignalConfigurationService
 
     public static SignalConfiguration CreateDefault()
     {
-        return GetPreset(SignalMode.GenericTwoChannel).Configuration;
+        return CopyConfiguration(GetPreset(SignalMode.GenericTwoChannel).Configuration);
     }
 
     public static SignalConfiguration CreateCustomDefault()
     {
-        return GetPreset(SignalMode.Custom).Configuration;
+        return CopyConfiguration(GetPreset(SignalMode.Custom).Configuration);
     }
 
     public static SignalModePreset GetPreset(SignalMode mode)
@@ -79,21 +86,39 @@ public static class SignalConfigurationService
 
     public static SignalConfiguration ApplyPreset(SignalMode mode)
     {
-        return GetPreset(mode).Configuration;
+        return CopyConfiguration(GetPreset(mode).Configuration);
+    }
+
+    public static SignalConfiguration SwitchToCustomPreservingSettings(SignalConfiguration configuration)
+    {
+        return CopyConfiguration(configuration, SignalMode.Custom);
+    }
+
+    public static SignalConfiguration ApplyChannelCount(SignalConfiguration configuration, int channelCount)
+    {
+        AnalogChannelLimits.Validate(channelCount);
+
+        return CopyConfiguration(configuration, SignalMode.Custom, channelCount);
     }
 
     public static SignalConfiguration ApplyManualChannelTextEdit(
         SignalConfiguration configuration,
-        string channel0Label,
-        string channel0Unit,
-        string channel1Label,
-        string channel1Unit)
+        IReadOnlyList<string> channelLabels,
+        IReadOnlyList<string> channelUnits)
     {
+        ChannelConfiguration[] channels = CopyChannels(configuration.Channels);
+
+        for (int i = 0; i < configuration.ChannelCount; i++)
+        {
+            string label = i < channelLabels.Count ? channelLabels[i] : channels[i].Label;
+            string unit = i < channelUnits.Count ? channelUnits[i] : channels[i].Unit;
+            channels[i] = new ChannelConfiguration(NormalizeText(label), NormalizeText(unit));
+        }
+
         return configuration with
         {
             Mode = SignalMode.Custom,
-            Channel0 = new ChannelConfiguration(NormalizeText(channel0Label), NormalizeText(channel0Unit)),
-            Channel1 = new ChannelConfiguration(NormalizeText(channel1Label), NormalizeText(channel1Unit))
+            Channels = channels
         };
     }
 
@@ -149,7 +174,7 @@ public static class SignalConfigurationService
             return "V";
         }
 
-        return channelIndex == 0 ? configuration.Channel0.Unit : configuration.Channel1.Unit;
+        return configuration.Channels[channelIndex].Unit;
     }
 
     public static string FormatReferenceVoltage(double referenceVoltage)
@@ -160,6 +185,7 @@ public static class SignalConfigurationService
     private static SignalModePreset CreatePreset(
         SignalMode mode,
         string displayName,
+        int channelCount,
         string channel0Label,
         string channel1Label,
         string channel0Unit,
@@ -168,14 +194,59 @@ public static class SignalConfigurationService
     {
         SignalConfiguration configuration = new(
             mode,
-            new ChannelConfiguration(channel0Label, channel0Unit),
-            new ChannelConfiguration(channel1Label, channel1Unit),
+            CreateChannels(channel0Label, channel1Label, channel0Unit, channel1Unit),
+            AnalogChannelLimits.Validate(channelCount),
             DefaultAdcBits,
             DefaultReferenceVoltage,
             SignalDisplayMode.RawAdcCounts,
             plotWindowSeconds);
 
         return new SignalModePreset(mode, displayName, configuration);
+    }
+
+    private static ChannelConfiguration[] CreateChannels(
+        string channel0Label,
+        string channel1Label,
+        string channel0Unit,
+        string channel1Unit)
+    {
+        ChannelConfiguration[] channels = new ChannelConfiguration[AnalogChannelLimits.Maximum];
+        channels[0] = new ChannelConfiguration(channel0Label, channel0Unit);
+        channels[1] = new ChannelConfiguration(channel1Label, channel1Unit);
+
+        for (int i = 2; i < channels.Length; i++)
+        {
+            channels[i] = new ChannelConfiguration($"Channel {i}", "ADC counts");
+        }
+
+        return channels;
+    }
+
+    private static SignalConfiguration CopyConfiguration(
+        SignalConfiguration configuration,
+        SignalMode? mode = null,
+        int? channelCount = null)
+    {
+        return configuration with
+        {
+            Mode = mode ?? configuration.Mode,
+            ChannelCount = channelCount ?? configuration.ChannelCount,
+            Channels = CopyChannels(configuration.Channels)
+        };
+    }
+
+    private static ChannelConfiguration[] CopyChannels(IReadOnlyList<ChannelConfiguration> channels)
+    {
+        ChannelConfiguration[] copy = new ChannelConfiguration[AnalogChannelLimits.Maximum];
+
+        for (int i = 0; i < copy.Length; i++)
+        {
+            copy[i] = i < channels.Count
+                ? channels[i]
+                : new ChannelConfiguration($"Channel {i}", "ADC counts");
+        }
+
+        return copy;
     }
 
     private static string NormalizeText(string value)
