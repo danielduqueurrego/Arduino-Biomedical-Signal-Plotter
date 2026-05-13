@@ -19,7 +19,8 @@ public partial class MainWindow : Window
     private readonly ISerialService _serialService = new SerialService();
     private readonly RecordingService _recordingService = new();
     private readonly ArduinoCliService _arduinoCliService = new();
-    private readonly FirmwareUploadService _firmwareUploadService = new();
+    private readonly FirmwareInfoService _firmwareInfoService = new();
+    private readonly FirmwareUploadService _firmwareUploadService;
     private readonly DispatcherTimer _plotRefreshTimer;
     private AvaPlot[] _plots = [];
     private IReadOnlyList<SerialPortDisplayInfo> _serialPortDisplayInfos = [];
@@ -34,6 +35,10 @@ public partial class MainWindow : Window
 
     public MainWindow()
     {
+        _firmwareUploadService = new FirmwareUploadService(
+            new ProcessCommandRunner(),
+            _firmwareInfoService.SketchFolderPath);
+
         InitializeComponent();
 
         _plots = [SignalPlot1, SignalPlot2, SignalPlot3];
@@ -599,6 +604,14 @@ public partial class MainWindow : Window
         await dialog.ShowDialog(this);
     }
 
+    private async void FirmwareDetailsButton_Click(object? sender, RoutedEventArgs e)
+    {
+        FirmwareDetailsWindow dialog = new(
+            _firmwareInfoService,
+            _firmwareUploadService.LastUploadLog);
+        await dialog.ShowDialog(this);
+    }
+
     private async void ApplyDeviceSettingsButton_Click(object? sender, RoutedEventArgs e)
     {
         if (_recordingService.IsRecording)
@@ -781,6 +794,7 @@ public partial class MainWindow : Window
 
         CheckArduinoCliButton.IsEnabled = !_isCheckingArduinoCli && !_isUploadingFirmware;
         UploadFirmwareButton.IsEnabled = !isRecording && !_isSavingRecording && !_isUploadingFirmware;
+        FirmwareDetailsButton.IsEnabled = !_isUploadingFirmware;
         HelpButton.IsEnabled = !_isUploadingFirmware;
     }
 

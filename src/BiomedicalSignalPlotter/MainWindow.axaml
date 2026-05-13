@@ -58,6 +58,10 @@
                         Content="Upload Firmware"
                         Click="UploadFirmwareButton_Click"
                         Margin="0,0,10,8" />
+                <Button x:Name="FirmwareDetailsButton"
+                        Content="View Firmware"
+                        Click="FirmwareDetailsButton_Click"
+                        Margin="0,0,10,8" />
                 <Button x:Name="HelpButton"
                         Content="Help"
                         Click="HelpButton_Click"

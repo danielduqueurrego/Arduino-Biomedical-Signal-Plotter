@@ -62,6 +62,7 @@ public class FirmwareUploadServiceTests
         Assert.False(result.Succeeded);
         Assert.Contains("compiling firmware", result.Message);
         Assert.Contains("compile failed", result.Message);
+        Assert.Contains("compile failed", service.LastUploadLog.FormatForDisplay());
     }
 
     [Fact]
@@ -101,6 +102,16 @@ public class FirmwareUploadServiceTests
                 $"upload -p COM5 --fqbn {FirmwareUploadService.UnoR4WifiFqbn} {SketchPath}"
             ],
             runner.Calls.Select(call => string.Join(' ', call.Arguments)).ToArray());
+        Assert.Equal(
+            [
+                "arduino-cli version",
+                "arduino-cli board list --json",
+                $"arduino-cli compile --fqbn {FirmwareUploadService.UnoR4WifiFqbn} {SketchPath}",
+                $"arduino-cli upload -p COM5 --fqbn {FirmwareUploadService.UnoR4WifiFqbn} {SketchPath}"
+            ],
+            service.LastUploadLog.Commands.Select(command => command.CommandText).ToArray());
+        Assert.Contains("compile ok", service.LastUploadLog.FormatForDisplay());
+        Assert.Contains("upload ok", service.LastUploadLog.FormatForDisplay());
     }
 
     [Fact]
@@ -112,6 +123,22 @@ public class FirmwareUploadServiceTests
         Assert.Equal("COM5", board.PortName);
         Assert.Equal(FirmwareUploadService.UnoR4WifiFqbn, board.Fqbn);
         Assert.Equal(FirmwareUploadService.UnoR4WifiBoardName, board.Name);
+    }
+
+    [Fact]
+    public void BuildCompileAndUploadArguments_UseExpectedArduinoCliShape()
+    {
+        Assert.Equal(
+            ["compile", "--fqbn", FirmwareUploadService.UnoR4WifiFqbn, SketchPath],
+            FirmwareUploadService.BuildCompileArguments(FirmwareUploadService.UnoR4WifiFqbn, SketchPath));
+        Assert.Equal(
+            ["upload", "-p", "COM5", "--fqbn", FirmwareUploadService.UnoR4WifiFqbn, SketchPath],
+            FirmwareUploadService.BuildUploadArguments("COM5", FirmwareUploadService.UnoR4WifiFqbn, SketchPath));
+        Assert.Equal(
+            "arduino-cli compile --fqbn arduino:renesas_uno:unor4wifi \"firmware path\"",
+            FirmwareUploadService.FormatCommand(
+                "arduino-cli",
+                ["compile", "--fqbn", FirmwareUploadService.UnoR4WifiFqbn, "firmware path"]));
     }
 
     private static FakeCommandRunner CreateRunnerWithVersion()

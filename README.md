@@ -78,6 +78,7 @@ Signal and device settings should not be changed during recording. Plot display 
 
 - `Check Arduino CLI`: verifies that `arduino-cli` is installed and available on `PATH`.
 - `Upload Firmware`: detects one connected UNO R4 WiFi, compiles the firmware, uploads it, and reconnects if the app was connected before upload.
+- `View Firmware`: opens a read-only firmware details window showing the Arduino sketch file path, the sketch source that will be compiled/uploaded, an Open Firmware Folder button, and the most recent upload commands and stdout/stderr log.
 - `Refresh Ports`: refreshes the serial port list. When Arduino CLI is available, the dropdown may include detected board names, such as `COM5 — Arduino UNO R4 WiFi`; the app still connects using the raw port name.
 - `Connect`: opens or closes the selected serial connection.
 - `Signal Settings`: configures signal mode, active channel count, channel labels and units, ADC bits, reference voltage, display mode, and channel routing.
@@ -223,7 +224,9 @@ Firmware responses also begin with `#`, so they are ignored as data:
 
 ## Arduino Firmware
 
-The Arduino sketch is in `firmware/arduino/TwoChannelCsvStreamer/`. It targets the Arduino UNO R4 WiFi, reads a runtime configured contiguous channel range from `A0` through `A5`, and streams raw ADC values at 250 Hz by default. The default firmware channel count is 2 (`A0,A1`) to preserve current behavior. The default ADC resolution is 14 bits.
+The Arduino sketch is in `firmware/arduino/TwoChannelCsvStreamer/`, and the uploaded source file is `firmware/arduino/TwoChannelCsvStreamer/TwoChannelCsvStreamer.ino`. It targets the Arduino UNO R4 WiFi, reads a runtime configured contiguous channel range from `A0` through `A5`, and streams raw ADC values at 250 Hz by default. The default firmware channel count is 2 (`A0,A1`) to preserve current behavior. The default ADC resolution is 14 bits.
+
+Click `View Firmware` in the app to inspect the exact read-only sketch source the app compiles/uploads. The same window shows the firmware file path, can open the firmware folder in the operating system file explorer, and displays the commands, stdout, and stderr from the most recent upload attempt.
 
 Arduino CLI is required for students who need to upload or update firmware through this workflow. Arduino CLI is not required for CSV export or plotting from an already programmed board.
 
@@ -241,7 +244,19 @@ To upload firmware from the app:
 2. Click `Check Arduino CLI` and confirm the CLI is available.
 3. Click `Upload Firmware`.
 
-The app uses Arduino CLI to detect connected boards, compile `firmware/arduino/TwoChannelCsvStreamer`, and upload it to the single detected UNO R4 WiFi. If a serial connection is open in the app, the app disconnects before uploading so Arduino CLI can use the port. After a successful upload, the app attempts to reconnect to the uploaded board automatically; if reconnect fails, it leaves the app disconnected and shows a status message.
+The app uses Arduino CLI to detect connected boards, compile `firmware/arduino/TwoChannelCsvStreamer`, and upload it to the single detected UNO R4 WiFi. The compile command is:
+
+```powershell
+arduino-cli compile --fqbn arduino:renesas_uno:unor4wifi firmware/arduino/TwoChannelCsvStreamer
+```
+
+The upload command uses the detected port:
+
+```powershell
+arduino-cli upload -p <PORT> --fqbn arduino:renesas_uno:unor4wifi firmware/arduino/TwoChannelCsvStreamer
+```
+
+If a serial connection is open in the app, the app disconnects before uploading so Arduino CLI can use the port. After a successful upload, the app attempts to reconnect to the uploaded board automatically; if reconnect fails, it leaves the app disconnected and shows a status message. Open `View Firmware` after an upload attempt to inspect the exact commands and CLI output.
 
 If no board is detected, check the USB cable, board power, drivers, and the output of `arduino-cli board list`. If multiple UNO R4 WiFi boards are detected, disconnect extras and try again. If upload fails, read the status message, close any other serial monitor using the board, then retry.
 

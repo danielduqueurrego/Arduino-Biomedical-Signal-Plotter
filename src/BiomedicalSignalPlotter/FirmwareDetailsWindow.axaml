@@ -1,0 +1,58 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="700"
+        x:Class="BiomedicalSignalPlotter.FirmwareDetailsWindow"
+        Title="Firmware Details"
+        Width="900"
+        Height="700"
+        MinWidth="720"
+        MinHeight="520"
+        WindowStartupLocation="CenterOwner">
+    <Grid RowDefinitions="Auto,*,Auto,Auto"
+          RowSpacing="12"
+          Margin="16">
+        <StackPanel Grid.Row="0"
+                    Spacing="8">
+            <TextBlock Text="Arduino Firmware"
+                       FontSize="20"
+                       FontWeight="SemiBold" />
+            <TextBlock Text="This is the Arduino sketch the app compiles and uploads to the board."
+                       TextWrapping="Wrap" />
+            <TextBlock x:Name="FirmwarePathText"
+                       TextWrapping="Wrap" />
+        </StackPanel>
+
+        <TabControl Grid.Row="1">
+            <TabItem Header="Firmware Source">
+                <TextBox x:Name="FirmwareSourceTextBox"
+                         AcceptsReturn="True"
+                         FontFamily="Consolas"
+                         IsReadOnly="True"
+                         TextWrapping="NoWrap" />
+            </TabItem>
+            <TabItem Header="Last Upload Log">
+                <TextBox x:Name="UploadLogTextBox"
+                         AcceptsReturn="True"
+                         FontFamily="Consolas"
+                         IsReadOnly="True"
+                         TextWrapping="NoWrap" />
+            </TabItem>
+        </TabControl>
+
+        <TextBlock x:Name="FirmwareDetailsStatusText"
+                   Grid.Row="2"
+                   TextWrapping="Wrap" />
+
+        <StackPanel Grid.Row="3"
+                    Orientation="Horizontal"
+                    HorizontalAlignment="Right"
+                    Spacing="8">
+            <Button Content="Open Firmware Folder"
+                    Click="OpenFirmwareFolderButton_Click" />
+            <Button Content="Close"
+                    Click="CloseButton_Click" />
+        </StackPanel>
+    </Grid>
+</Window>

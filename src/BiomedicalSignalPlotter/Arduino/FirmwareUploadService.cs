@@ -17,7 +17,7 @@ public sealed class FirmwareUploadService
     private readonly string _sketchPath;
 
     public FirmwareUploadService()
-        : this(new ProcessCommandRunner(), ResolveDefaultSketchPath())
+        : this(new ProcessCommandRunner(), FirmwareInfoService.ResolveDefaultSketchFolderPath())
     {
     }
 
@@ -27,17 +27,69 @@ public sealed class FirmwareUploadService
 
         _commandRunner = commandRunner;
         _sketchPath = sketchPath;
+        LastUploadLog = FirmwareUploadLog.Empty(_sketchPath);
     }
+
+    public string SketchPath => _sketchPath;
+
+    public FirmwareUploadLog LastUploadLog { get; private set; }
 
     public async Task<FirmwareUploadResult> UploadUnoR4WifiAsync(
         IProgress<string>? progress = null,
         CancellationToken cancellationToken = default)
     {
+        List<FirmwareUploadCommandLog> commandLogs = [];
+        DateTimeOffset startedAt = DateTimeOffset.Now;
+
+        try
+        {
+            return await UploadUnoR4WifiCoreAsync(progress, commandLogs, cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            LastUploadLog = new FirmwareUploadLog(
+                _sketchPath,
+                startedAt,
+                DateTimeOffset.Now,
+                commandLogs.ToArray());
+        }
+    }
+
+    public static IReadOnlyList<string> BuildCompileArguments(string fqbn, string sketchPath)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(fqbn);
+        ArgumentException.ThrowIfNullOrWhiteSpace(sketchPath);
+
+        return ["compile", "--fqbn", fqbn, sketchPath];
+    }
+
+    public static IReadOnlyList<string> BuildUploadArguments(string portName, string fqbn, string sketchPath)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(portName);
+        ArgumentException.ThrowIfNullOrWhiteSpace(fqbn);
+        ArgumentException.ThrowIfNullOrWhiteSpace(sketchPath);
+
+        return ["upload", "-p", portName, "--fqbn", fqbn, sketchPath];
+    }
+
+    public static string FormatCommand(string fileName, IReadOnlyList<string> arguments)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(fileName);
+
+        return string.Join(' ', [fileName, .. arguments.Select(QuoteArgument)]);
+    }
+
+    private async Task<FirmwareUploadResult> UploadUnoR4WifiCoreAsync(
+        IProgress<string>? progress,
+        List<FirmwareUploadCommandLog> commandLogs,
+        CancellationToken cancellationToken)
+    {
         progress?.Report("Checking Arduino CLI...");
         CommandResult versionResult;
         try
         {
-            versionResult = await _commandRunner.RunAsync(
+            versionResult = await RunLoggedAsync(
+                commandLogs,
                 "arduino-cli",
                 ["version"],
                 VersionCheckTimeout,
@@ -60,7 +112,8 @@ public sealed class FirmwareUploadService
         }
 
         progress?.Report("Detecting connected boards...");
-        CommandResult boardListResult = await _commandRunner.RunAsync(
+        CommandResult boardListResult = await RunLoggedAsync(
+            commandLogs,
             "arduino-cli",
             ["board", "list", "--json"],
             BoardListTimeout,
@@ -96,9 +149,10 @@ public sealed class FirmwareUploadService
         string fqbn = string.IsNullOrWhiteSpace(board.Fqbn) ? UnoR4WifiFqbn : board.Fqbn;
 
         progress?.Report("Compiling firmware...");
-        CommandResult compileResult = await _commandRunner.RunAsync(
+        CommandResult compileResult = await RunLoggedAsync(
+            commandLogs,
             "arduino-cli",
-            ["compile", "--fqbn", fqbn, _sketchPath],
+            BuildCompileArguments(fqbn, _sketchPath),
             CompileTimeout,
             cancellationToken).ConfigureAwait(false);
 
@@ -108,9 +162,10 @@ public sealed class FirmwareUploadService
         }
 
         progress?.Report("Uploading firmware...");
-        CommandResult uploadResult = await _commandRunner.RunAsync(
+        CommandResult uploadResult = await RunLoggedAsync(
+            commandLogs,
             "arduino-cli",
-            ["upload", "-p", board.PortName, "--fqbn", fqbn, _sketchPath],
+            BuildUploadArguments(board.PortName, fqbn, _sketchPath),
             UploadTimeout,
             cancellationToken).ConfigureAwait(false);
 
@@ -159,33 +214,6 @@ public sealed class FirmwareUploadService
         return matches;
     }
 
-    private static string ResolveDefaultSketchPath()
-    {
-        string relativePath = Path.Combine("firmware", "arduino", "TwoChannelCsvStreamer");
-        string[] roots =
-        [
-            Environment.CurrentDirectory,
-            AppContext.BaseDirectory
-        ];
-
-        foreach (string root in roots)
-        {
-            DirectoryInfo? directory = new(root);
-            while (directory is not null)
-            {
-                string candidate = Path.GetFullPath(Path.Combine(directory.FullName, relativePath));
-                if (Directory.Exists(candidate))
-                {
-                    return candidate;
-                }
-
-                directory = directory.Parent;
-            }
-        }
-
-        return relativePath;
-    }
-
     private static string GetCommandOutput(CommandResult result)
     {
         string output = string.IsNullOrWhiteSpace(result.StandardError)
@@ -208,5 +236,53 @@ public sealed class FirmwareUploadService
             property.ValueKind == JsonValueKind.String
             ? property.GetString() ?? string.Empty
             : string.Empty;
+    }
+
+    private async Task<CommandResult> RunLoggedAsync(
+        List<FirmwareUploadCommandLog> commandLogs,
+        string fileName,
+        IReadOnlyList<string> arguments,
+        TimeSpan timeout,
+        CancellationToken cancellationToken)
+    {
+        string commandText = FormatCommand(fileName, arguments);
+
+        try
+        {
+            CommandResult result = await _commandRunner.RunAsync(
+                fileName,
+                arguments,
+                timeout,
+                cancellationToken).ConfigureAwait(false);
+
+            commandLogs.Add(new FirmwareUploadCommandLog(
+                commandText,
+                result.ExitCode,
+                result.StandardOutput,
+                result.StandardError));
+
+            return result;
+        }
+        catch (Exception ex)
+        {
+            commandLogs.Add(new FirmwareUploadCommandLog(
+                commandText,
+                null,
+                string.Empty,
+                ex.Message));
+            throw;
+        }
+    }
+
+    private static string QuoteArgument(string argument)
+    {
+        if (string.IsNullOrEmpty(argument))
+        {
+            return "\"\"";
+        }
+
+        return argument.Any(char.IsWhiteSpace) || argument.Contains('"', StringComparison.Ordinal)
+            ? $"\"{argument.Replace("\"", "\\\"", StringComparison.Ordinal)}\""
+            : argument;
     }
 }
