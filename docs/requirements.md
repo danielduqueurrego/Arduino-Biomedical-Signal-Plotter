@@ -28,6 +28,8 @@ The first version should prove that the app can:
 
 9\. Configure Arduino channel count, ADC bits, sample rate, and streaming state over serial commands.
 
+10\. Upload Arduino firmware from the GUI using Arduino CLI when available.
+
 
 
 \## Not included in Version 0.1

@@ -187,6 +187,16 @@ arduino-cli version
 
 You can install Arduino CLI from the official Arduino CLI installation instructions, then confirm it is on your `PATH` with the command above.
 
+To upload firmware from the app:
+
+1. Connect one Arduino UNO R4 WiFi by USB.
+2. Click `Check Arduino CLI` and confirm the CLI is available.
+3. Click `Upload Firmware`.
+
+The app uses Arduino CLI to detect connected boards, compile `firmware/arduino/TwoChannelCsvStreamer`, and upload it to the single detected UNO R4 WiFi. If a serial connection is open in the app, the app disconnects before uploading so Arduino CLI can use the port.
+
+If no board is detected, check the USB cable, board power, drivers, and the output of `arduino-cli board list`. If multiple UNO R4 WiFi boards are detected, disconnect extras and try again. If upload fails, read the status message, close any other serial monitor using the board, then retry.
+
 List connected boards:
 
 ```powershell

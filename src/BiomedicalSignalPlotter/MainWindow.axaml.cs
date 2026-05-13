@@ -20,6 +20,7 @@ public partial class MainWindow : Window
     private readonly ISerialService _serialService = new SerialService();
     private readonly RecordingService _recordingService = new();
     private readonly ArduinoCliService _arduinoCliService = new();
+    private readonly FirmwareUploadService _firmwareUploadService = new();
     private readonly DispatcherTimer _plotRefreshTimer;
     private readonly int[] _channelCountOptions = Enumerable
         .Range(AnalogChannelLimits.Minimum, AnalogChannelLimits.Maximum)
@@ -404,6 +405,39 @@ public partial class MainWindow : Window
         }
         finally
         {
+            CheckArduinoCliButton.IsEnabled = true;
+        }
+    }
+
+    private async void UploadFirmwareButton_Click(object? sender, RoutedEventArgs e)
+    {
+        UploadFirmwareButton.IsEnabled = false;
+        CheckArduinoCliButton.IsEnabled = false;
+
+        try
+        {
+            if (_serialService.IsConnected)
+            {
+                StatusText.Text = "Disconnecting serial before firmware upload...";
+                await DisconnectSerialAsync();
+            }
+
+            Progress<string> progress = new(message => StatusText.Text = message);
+            FirmwareUploadResult result = await _firmwareUploadService.UploadUnoR4WifiAsync(progress);
+            StatusText.Text = result.Message;
+
+            if (result.Succeeded)
+            {
+                RefreshSerialPorts(updateStatus: false);
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException or TimeoutException)
+        {
+            StatusText.Text = $"Upload failed: {ex.Message}";
+        }
+        finally
+        {
+            UploadFirmwareButton.IsEnabled = true;
             CheckArduinoCliButton.IsEnabled = true;
         }
     }

@@ -35,9 +35,11 @@ public sealed class ProcessCommandRunner : ICommandRunner
 
         try
         {
-            string standardOutput = await process.StandardOutput.ReadToEndAsync(timeoutTokenSource.Token).ConfigureAwait(false);
-            string standardError = await process.StandardError.ReadToEndAsync(timeoutTokenSource.Token).ConfigureAwait(false);
+            Task<string> standardOutputTask = process.StandardOutput.ReadToEndAsync(timeoutTokenSource.Token);
+            Task<string> standardErrorTask = process.StandardError.ReadToEndAsync(timeoutTokenSource.Token);
             await process.WaitForExitAsync(timeoutTokenSource.Token).ConfigureAwait(false);
+            string standardOutput = await standardOutputTask.ConfigureAwait(false);
+            string standardError = await standardErrorTask.ConfigureAwait(false);
 
             return new CommandResult(process.ExitCode, standardOutput, standardError);
         }

@@ -74,7 +74,7 @@
             </Grid>
 
             <Grid Grid.Row="1"
-                  ColumnDefinitions="Auto,70,Auto,80,Auto,90,Auto,Auto,*"
+                  ColumnDefinitions="Auto,70,Auto,80,Auto,90,Auto,Auto,Auto,*"
                   ColumnSpacing="8"
                   VerticalAlignment="Center">
                 <TextBlock Grid.Column="0"
@@ -105,6 +105,10 @@
                         Grid.Column="7"
                         Content="Check Arduino CLI"
                         Click="CheckArduinoCliButton_Click" />
+                <Button x:Name="UploadFirmwareButton"
+                        Grid.Column="8"
+                        Content="Upload Firmware"
+                        Click="UploadFirmwareButton_Click" />
             </Grid>
 
             <Grid Grid.Row="2"
