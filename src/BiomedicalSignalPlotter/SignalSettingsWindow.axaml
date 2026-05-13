@@ -1,0 +1,193 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="760" d:DesignHeight="620"
+        x:Class="BiomedicalSignalPlotter.SignalSettingsWindow"
+        Title="Signal Settings"
+        Width="760"
+        Height="620"
+        MinWidth="700"
+        MinHeight="560"
+        WindowStartupLocation="CenterOwner">
+    <Grid RowDefinitions="Auto,Auto,*,Auto"
+          RowSpacing="14"
+          Margin="16">
+        <Grid Grid.Row="0"
+              ColumnDefinitions="Auto,220,Auto,160,*"
+              ColumnSpacing="10"
+              VerticalAlignment="Center">
+            <TextBlock Grid.Column="0"
+                       Text="Signal mode"
+                       VerticalAlignment="Center" />
+            <ComboBox x:Name="SignalModeComboBox"
+                      Grid.Column="1"
+                      MinWidth="220"
+                      SelectionChanged="SignalModeComboBox_SelectionChanged" />
+            <TextBlock Grid.Column="2"
+                       Text="Display"
+                       VerticalAlignment="Center" />
+            <ComboBox x:Name="DisplayModeComboBox"
+                      Grid.Column="3"
+                      MinWidth="160"
+                      SelectionChanged="DisplayModeComboBox_SelectionChanged" />
+        </Grid>
+
+        <Grid Grid.Row="1"
+              ColumnDefinitions="Auto,70,Auto,80,Auto,90,Auto,90,*"
+              ColumnSpacing="10"
+              VerticalAlignment="Center">
+            <TextBlock Grid.Column="0"
+                       Text="Channels"
+                       VerticalAlignment="Center" />
+            <ComboBox x:Name="ChannelCountComboBox"
+                      Grid.Column="1"
+                      MinWidth="70"
+                      SelectionChanged="ChannelCountComboBox_SelectionChanged" />
+            <TextBlock Grid.Column="2"
+                       Text="ADC bits"
+                       VerticalAlignment="Center" />
+            <TextBox x:Name="AdcBitsTextBox"
+                     Grid.Column="3" />
+            <TextBlock Grid.Column="4"
+                       Text="Sample Hz"
+                       VerticalAlignment="Center" />
+            <TextBox x:Name="SampleRateHzTextBox"
+                     Grid.Column="5" />
+            <TextBlock Grid.Column="6"
+                       Text="Reference V"
+                       VerticalAlignment="Center" />
+            <TextBox x:Name="ReferenceVoltageTextBox"
+                     Grid.Column="7" />
+        </Grid>
+
+        <ScrollViewer Grid.Row="2"
+                      VerticalScrollBarVisibility="Auto">
+            <StackPanel Spacing="8">
+                <Grid ColumnDefinitions="70,*,120"
+                      ColumnSpacing="10">
+                    <TextBlock Grid.Column="0"
+                               Text="Pin"
+                               FontWeight="SemiBold" />
+                    <TextBlock Grid.Column="1"
+                               Text="Label"
+                               FontWeight="SemiBold" />
+                    <TextBlock Grid.Column="2"
+                               Text="Unit"
+                               FontWeight="SemiBold" />
+                </Grid>
+
+                <Grid x:Name="Channel0Panel"
+                      ColumnDefinitions="70,*,120"
+                      ColumnSpacing="10">
+                    <TextBlock Grid.Column="0"
+                               Text="A0"
+                               VerticalAlignment="Center" />
+                    <TextBox x:Name="Channel0LabelTextBox"
+                             Grid.Column="1"
+                             Watermark="Label"
+                             TextChanged="ChannelConfigurationTextBox_TextChanged" />
+                    <TextBox x:Name="Channel0UnitTextBox"
+                             Grid.Column="2"
+                             Watermark="Unit"
+                             TextChanged="ChannelConfigurationTextBox_TextChanged" />
+                </Grid>
+
+                <Grid x:Name="Channel1Panel"
+                      ColumnDefinitions="70,*,120"
+                      ColumnSpacing="10">
+                    <TextBlock Grid.Column="0"
+                               Text="A1"
+                               VerticalAlignment="Center" />
+                    <TextBox x:Name="Channel1LabelTextBox"
+                             Grid.Column="1"
+                             Watermark="Label"
+                             TextChanged="ChannelConfigurationTextBox_TextChanged" />
+                    <TextBox x:Name="Channel1UnitTextBox"
+                             Grid.Column="2"
+                             Watermark="Unit"
+                             TextChanged="ChannelConfigurationTextBox_TextChanged" />
+                </Grid>
+
+                <Grid x:Name="Channel2Panel"
+                      ColumnDefinitions="70,*,120"
+                      ColumnSpacing="10">
+                    <TextBlock Grid.Column="0"
+                               Text="A2"
+                               VerticalAlignment="Center" />
+                    <TextBox x:Name="Channel2LabelTextBox"
+                             Grid.Column="1"
+                             Watermark="Label"
+                             TextChanged="ChannelConfigurationTextBox_TextChanged" />
+                    <TextBox x:Name="Channel2UnitTextBox"
+                             Grid.Column="2"
+                             Watermark="Unit"
+                             TextChanged="ChannelConfigurationTextBox_TextChanged" />
+                </Grid>
+
+                <Grid x:Name="Channel3Panel"
+                      ColumnDefinitions="70,*,120"
+                      ColumnSpacing="10">
+                    <TextBlock Grid.Column="0"
+                               Text="A3"
+                               VerticalAlignment="Center" />
+                    <TextBox x:Name="Channel3LabelTextBox"
+                             Grid.Column="1"
+                             Watermark="Label"
+                             TextChanged="ChannelConfigurationTextBox_TextChanged" />
+                    <TextBox x:Name="Channel3UnitTextBox"
+                             Grid.Column="2"
+                             Watermark="Unit"
+                             TextChanged="ChannelConfigurationTextBox_TextChanged" />
+                </Grid>
+
+                <Grid x:Name="Channel4Panel"
+                      ColumnDefinitions="70,*,120"
+                      ColumnSpacing="10">
+                    <TextBlock Grid.Column="0"
+                               Text="A4"
+                               VerticalAlignment="Center" />
+                    <TextBox x:Name="Channel4LabelTextBox"
+                             Grid.Column="1"
+                             Watermark="Label"
+                             TextChanged="ChannelConfigurationTextBox_TextChanged" />
+                    <TextBox x:Name="Channel4UnitTextBox"
+                             Grid.Column="2"
+                             Watermark="Unit"
+                             TextChanged="ChannelConfigurationTextBox_TextChanged" />
+                </Grid>
+
+                <Grid x:Name="Channel5Panel"
+                      ColumnDefinitions="70,*,120"
+                      ColumnSpacing="10">
+                    <TextBlock Grid.Column="0"
+                               Text="A5"
+                               VerticalAlignment="Center" />
+                    <TextBox x:Name="Channel5LabelTextBox"
+                             Grid.Column="1"
+                             Watermark="Label"
+                             TextChanged="ChannelConfigurationTextBox_TextChanged" />
+                    <TextBox x:Name="Channel5UnitTextBox"
+                             Grid.Column="2"
+                             Watermark="Unit"
+                             TextChanged="ChannelConfigurationTextBox_TextChanged" />
+                </Grid>
+            </StackPanel>
+        </ScrollViewer>
+
+        <Grid Grid.Row="3"
+              ColumnDefinitions="*,Auto,Auto"
+              ColumnSpacing="10">
+            <TextBlock x:Name="SettingsStatusText"
+                       Grid.Column="0"
+                       VerticalAlignment="Center"
+                       TextWrapping="Wrap" />
+            <Button Grid.Column="1"
+                    Content="Cancel"
+                    Click="CancelButton_Click" />
+            <Button Grid.Column="2"
+                    Content="OK"
+                    Click="OkButton_Click" />
+        </Grid>
+    </Grid>
+</Window>

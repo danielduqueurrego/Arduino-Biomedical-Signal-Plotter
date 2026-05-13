@@ -1,4 +1,3 @@
-using System.Globalization;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
@@ -22,21 +21,9 @@ public partial class MainWindow : Window
     private readonly ArduinoCliService _arduinoCliService = new();
     private readonly FirmwareUploadService _firmwareUploadService = new();
     private readonly DispatcherTimer _plotRefreshTimer;
-    private readonly int[] _channelCountOptions = Enumerable
-        .Range(AnalogChannelLimits.Minimum, AnalogChannelLimits.Maximum)
-        .ToArray();
-    private readonly DisplayModeOption[] _displayModeOptions =
-    [
-        new(SignalDisplayMode.RawAdcCounts, "Raw ADC counts"),
-        new(SignalDisplayMode.Voltage, "Voltage")
-    ];
-    private TextBox[] _channelLabelTextBoxes = [];
-    private TextBox[] _channelUnitTextBoxes = [];
-    private Control[] _channelConfigurationPanels = [];
     private SignalConfiguration _signalConfiguration = SignalConfigurationService.CreateDefault();
     private int _deviceSampleRateHz = ArduinoDeviceSettingsLimits.DefaultSampleRateHz;
     private string _plotTitle = "Simulated data";
-    private bool _isUpdatingConfigurationUi;
     private bool _isSavingRecording;
     private bool _isUploadingFirmware;
     private bool _isApplyingDeviceSettings;
@@ -47,7 +34,7 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
 
-        InitializeConfigurationUi();
+        ApplyActiveChannelCount(clearBuffer: false);
         ConfigurePlot();
         SignalPlot.Refresh();
         _simulatedDataService.SampleGenerated += SimulatedDataService_SampleGenerated;
@@ -413,6 +400,38 @@ public partial class MainWindow : Window
         UpdateWorkflowUi();
     }
 
+    private async void SignalSettingsButton_Click(object? sender, RoutedEventArgs e)
+    {
+        if (_recordingService.IsRecording)
+        {
+            StatusText.Text = "Stop recording before changing signal settings.";
+            return;
+        }
+
+        if (_recordingService.Count > 0)
+        {
+            StatusText.Text = "Clear recorded data before changing signal settings.";
+            return;
+        }
+
+        SignalSettingsWindow dialog = new(_signalConfiguration, _deviceSampleRateHz, isReadOnly: false);
+        SignalSettingsResult? result = await dialog.ShowDialog<SignalSettingsResult?>(this);
+
+        if (result is null)
+        {
+            return;
+        }
+
+        int previousChannelCount = _signalConfiguration.ChannelCount;
+        _signalConfiguration = result.Configuration;
+        _deviceSampleRateHz = result.SampleRateHz;
+        ApplyActiveChannelCount(clearBuffer: previousChannelCount != _signalConfiguration.ChannelCount);
+        ConfigurePlot();
+        SignalPlot.Refresh();
+        StatusText.Text = $"Signal settings updated: {_signalConfiguration.ChannelCount} channel(s), {_signalConfiguration.AdcBits}-bit ADC, {_deviceSampleRateHz} Hz device sample rate.";
+        UpdateWorkflowUi();
+    }
+
     private async void ApplyDeviceSettingsButton_Click(object? sender, RoutedEventArgs e)
     {
         if (_recordingService.IsRecording)
@@ -427,13 +446,13 @@ public partial class MainWindow : Window
             return;
         }
 
-        int adcBits = TryParseInt(AdcBitsTextBox.Text, _signalConfiguration.AdcBits);
-        int sampleRateHz = TryParseInt(SampleRateHzTextBox.Text, _deviceSampleRateHz);
-
         ArduinoDeviceSettings settings;
         try
         {
-            settings = new ArduinoDeviceSettings(_signalConfiguration.ChannelCount, adcBits, sampleRateHz);
+            settings = new ArduinoDeviceSettings(
+                _signalConfiguration.ChannelCount,
+                _signalConfiguration.AdcBits,
+                _deviceSampleRateHz);
         }
         catch (ArgumentOutOfRangeException ex)
         {
@@ -441,13 +460,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        _signalConfiguration = SignalConfigurationService.ApplyAdcSettings(
-            _signalConfiguration,
-            settings.AdcBits,
-            TryParseDouble(ReferenceVoltageTextBox.Text, _signalConfiguration.ReferenceVoltage));
-        _deviceSampleRateHz = settings.SampleRateHz;
         ApplyActiveChannelCount(clearBuffer: true);
-        UpdateConfigurationUi();
 
         try
         {
@@ -582,154 +595,11 @@ public partial class MainWindow : Window
         ConnectButton.IsEnabled = !_isUploadingFirmware;
         SimulationButton.IsEnabled = !_isUploadingFirmware;
 
-        SignalModeComboBox.IsEnabled = canEditMetadata;
-        DisplayModeComboBox.IsEnabled = canEditMetadata;
-        ReferenceVoltageTextBox.IsEnabled = canEditMetadata;
-
-        ChannelCountComboBox.IsEnabled = canEditMetadata && canEditDeviceSettings;
-        AdcBitsTextBox.IsEnabled = canEditMetadata && canEditDeviceSettings;
-        SampleRateHzTextBox.IsEnabled = canEditDeviceSettings;
+        SignalSettingsButton.IsEnabled = canEditMetadata;
         ApplyDeviceSettingsButton.IsEnabled = _serialService.IsConnected && canEditDeviceSettings;
-
-        foreach (TextBox textBox in _channelLabelTextBoxes.Concat(_channelUnitTextBoxes))
-        {
-            textBox.IsEnabled = canEditMetadata;
-        }
 
         CheckArduinoCliButton.IsEnabled = !_isCheckingArduinoCli && !_isUploadingFirmware;
         UploadFirmwareButton.IsEnabled = !isRecording && !_isSavingRecording && !_isUploadingFirmware;
-    }
-
-    private void InitializeConfigurationUi()
-    {
-        _channelLabelTextBoxes =
-        [
-            Channel0LabelTextBox,
-            Channel1LabelTextBox,
-            Channel2LabelTextBox,
-            Channel3LabelTextBox,
-            Channel4LabelTextBox,
-            Channel5LabelTextBox
-        ];
-        _channelUnitTextBoxes =
-        [
-            Channel0UnitTextBox,
-            Channel1UnitTextBox,
-            Channel2UnitTextBox,
-            Channel3UnitTextBox,
-            Channel4UnitTextBox,
-            Channel5UnitTextBox
-        ];
-        _channelConfigurationPanels =
-        [
-            Channel0Panel,
-            Channel1Panel,
-            Channel2Panel,
-            Channel3Panel,
-            Channel4Panel,
-            Channel5Panel
-        ];
-
-        SignalModeComboBox.ItemsSource = SignalConfigurationService.AllPresets;
-        ChannelCountComboBox.ItemsSource = _channelCountOptions;
-        DisplayModeComboBox.ItemsSource = _displayModeOptions;
-        ApplyActiveChannelCount(clearBuffer: false);
-        UpdateConfigurationUi();
-    }
-
-    private void UpdateConfigurationUi()
-    {
-        _isUpdatingConfigurationUi = true;
-        try
-        {
-            SignalModeComboBox.SelectedItem = SignalConfigurationService.GetPreset(_signalConfiguration.Mode);
-            ChannelCountComboBox.SelectedItem = _signalConfiguration.ChannelCount;
-            DisplayModeComboBox.SelectedItem = _displayModeOptions.Single(option => option.DisplayMode == _signalConfiguration.DisplayMode);
-
-            for (int i = 0; i < AnalogChannelLimits.Maximum; i++)
-            {
-                _channelLabelTextBoxes[i].Text = _signalConfiguration.Channels[i].Label;
-                _channelUnitTextBoxes[i].Text = _signalConfiguration.Channels[i].Unit;
-                _channelConfigurationPanels[i].IsVisible = i < _signalConfiguration.ChannelCount;
-            }
-
-            AdcBitsTextBox.Text = _signalConfiguration.AdcBits.ToString(CultureInfo.InvariantCulture);
-            SampleRateHzTextBox.Text = _deviceSampleRateHz.ToString(CultureInfo.InvariantCulture);
-            ReferenceVoltageTextBox.Text = SignalConfigurationService.FormatReferenceVoltage(_signalConfiguration.ReferenceVoltage);
-        }
-        finally
-        {
-            _isUpdatingConfigurationUi = false;
-        }
-    }
-
-    private void SignalModeComboBox_SelectionChanged(object? sender, SelectionChangedEventArgs e)
-    {
-        if (_isUpdatingConfigurationUi || SignalModeComboBox.SelectedItem is not SignalModePreset preset)
-        {
-            return;
-        }
-
-        _signalConfiguration = preset.Mode == SignalMode.Custom
-            ? SignalConfigurationService.SwitchToCustomPreservingSettings(_signalConfiguration)
-            : SignalConfigurationService.ApplyPreset(preset.Mode);
-
-        ApplyActiveChannelCount(clearBuffer: true);
-        UpdateConfigurationUi();
-    }
-
-    private void ChannelCountComboBox_SelectionChanged(object? sender, SelectionChangedEventArgs e)
-    {
-        if (_isUpdatingConfigurationUi || ChannelCountComboBox.SelectedItem is not int channelCount)
-        {
-            return;
-        }
-
-        _signalConfiguration = SignalConfigurationService.ApplyChannelCount(_signalConfiguration, channelCount);
-        ApplyActiveChannelCount(clearBuffer: true);
-        UpdateConfigurationUi();
-    }
-
-    private void DisplayModeComboBox_SelectionChanged(object? sender, SelectionChangedEventArgs e)
-    {
-        if (_isUpdatingConfigurationUi || DisplayModeComboBox.SelectedItem is not DisplayModeOption option)
-        {
-            return;
-        }
-
-        _signalConfiguration = SignalConfigurationService.ApplyDisplayMode(_signalConfiguration, option.DisplayMode);
-    }
-
-    private void ChannelConfigurationTextBox_TextChanged(object? sender, TextChangedEventArgs e)
-    {
-        if (_isUpdatingConfigurationUi)
-        {
-            return;
-        }
-
-        _signalConfiguration = SignalConfigurationService.ApplyManualChannelTextEdit(
-            _signalConfiguration,
-            _channelLabelTextBoxes.Select(textBox => textBox.Text ?? string.Empty).ToArray(),
-            _channelUnitTextBoxes.Select(textBox => textBox.Text ?? string.Empty).ToArray());
-
-        _isUpdatingConfigurationUi = true;
-        try
-        {
-            SignalModeComboBox.SelectedItem = SignalConfigurationService.GetPreset(SignalMode.Custom);
-        }
-        finally
-        {
-            _isUpdatingConfigurationUi = false;
-        }
-    }
-
-    private void AdcConfigurationTextBox_LostFocus(object? sender, RoutedEventArgs e)
-    {
-        int adcBits = TryParseInt(AdcBitsTextBox.Text, _signalConfiguration.AdcBits);
-        double referenceVoltage = TryParseDouble(ReferenceVoltageTextBox.Text, _signalConfiguration.ReferenceVoltage);
-
-        _signalConfiguration = SignalConfigurationService.ApplyAdcSettings(_signalConfiguration, adcBits, referenceVoltage);
-        UpdateConfigurationUi();
     }
 
     private void ApplyActiveChannelCount(bool clearBuffer)
@@ -763,25 +633,6 @@ public partial class MainWindow : Window
             SignalConfigurationService.GetDisplayModeText(_signalConfiguration.DisplayMode));
     }
 
-    private static int TryParseInt(string? value, int fallback)
-    {
-        return int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out int result)
-            ? result
-            : fallback;
-    }
-
-    private static double TryParseDouble(string? value, double fallback)
-    {
-        if (double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out double invariantResult))
-        {
-            return invariantResult;
-        }
-
-        return double.TryParse(value, NumberStyles.Float, CultureInfo.CurrentCulture, out double currentCultureResult)
-            ? currentCultureResult
-            : fallback;
-    }
-
     private async void MainWindow_Closed(object? sender, EventArgs e)
     {
         _plotRefreshTimer.Stop();
@@ -789,8 +640,4 @@ public partial class MainWindow : Window
         await _simulatedDataService.StopAsync();
     }
 
-    private sealed record DisplayModeOption(SignalDisplayMode DisplayMode, string DisplayName)
-    {
-        public override string ToString() => DisplayName;
-    }
 }

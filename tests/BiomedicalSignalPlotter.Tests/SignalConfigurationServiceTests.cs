@@ -26,13 +26,25 @@ public class SignalConfigurationServiceTests
 
         Assert.Equal(SignalMode.Custom, configuration.Mode);
         Assert.Equal(2, configuration.ChannelCount);
-        Assert.Equal("Channel 0", configuration.Channel0.Label);
-        Assert.Equal("Channel 1", configuration.Channel1.Label);
+        Assert.Equal("A0", configuration.Channel0.Label);
+        Assert.Equal("A1", configuration.Channel1.Label);
         Assert.Equal("ADC counts", configuration.Channel0.Unit);
         Assert.Equal("ADC counts", configuration.Channel1.Unit);
         Assert.Equal(14, configuration.AdcBits);
         Assert.Equal(5.0, configuration.ReferenceVoltage);
         Assert.Equal(SignalDisplayMode.RawAdcCounts, configuration.DisplayMode);
+    }
+
+    [Fact]
+    public void CreateCustomDefault_NamesChannelsAfterArduinoAnalogPins()
+    {
+        SignalConfiguration configuration = SignalConfigurationService.CreateCustomDefault();
+
+        string[] labels = configuration.Channels
+            .Select(channel => channel.Label)
+            .ToArray();
+
+        Assert.Equal(["A0", "A1", "A2", "A3", "A4", "A5"], labels);
     }
 
     [Fact]

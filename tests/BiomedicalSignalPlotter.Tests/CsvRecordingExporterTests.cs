@@ -103,14 +103,16 @@ public class CsvRecordingExporterTests
 
         Assert.Equal("# mode=Custom", lines[0]);
         Assert.Equal("# channel_count=2", lines[1]);
-        Assert.Equal("# channel_0_label=EMG", lines[2]);
-        Assert.Equal("# channel_0_unit=ADC counts", lines[3]);
-        Assert.Equal("# channel_1_label=Force", lines[4]);
-        Assert.Equal("# channel_1_unit=ADC counts", lines[5]);
-        Assert.Equal("# adc_bits=10", lines[6]);
-        Assert.Equal("# reference_voltage=5", lines[7]);
-        Assert.Equal("# display_mode=Raw ADC counts", lines[8]);
-        Assert.Equal("time_s,channel_0,channel_1,source", lines[9]);
+        Assert.Equal("# channel_0_pin=A0", lines[2]);
+        Assert.Equal("# channel_0_label=EMG", lines[3]);
+        Assert.Equal("# channel_0_unit=ADC counts", lines[4]);
+        Assert.Equal("# channel_1_pin=A1", lines[5]);
+        Assert.Equal("# channel_1_label=Force", lines[6]);
+        Assert.Equal("# channel_1_unit=ADC counts", lines[7]);
+        Assert.Equal("# adc_bits=10", lines[8]);
+        Assert.Equal("# reference_voltage=5", lines[9]);
+        Assert.Equal("# display_mode=Raw ADC counts", lines[10]);
+        Assert.Equal("time_s,channel_0,channel_1,source", lines[11]);
     }
 
     private static string[] SplitLines(string text)

@@ -55,6 +55,8 @@ dotnet test
 
 ## Display Settings
 
+Click `Signal Settings` to open the detailed signal/channel configuration. The main window keeps only connection, simulation, recording, device, and firmware actions visible so more space is available for plotting.
+
 The app includes lightweight display presets so the same Arduino stream can be used in different lab activities:
 
 - Custom
@@ -71,6 +73,8 @@ Custom mode lets users edit:
 - active channel labels and units
 - reference voltage
 - display mode
+
+Channels are mapped to Arduino analog pins `A0` through `A5`. The default editable labels are `A0`, `A1`, `A2`, `A3`, `A4`, and `A5`; presets may replace the visible label with lab-oriented text such as `ECG` or `EMG`, while CSV metadata still records the underlying Arduino pin mapping.
 
 If a preset is selected and a channel label or unit is edited manually, the app switches to Custom mode while preserving the edited text.
 
@@ -99,7 +103,7 @@ ADC bits configure Arduino `analogReadResolution(adcBits)` after `Apply Device S
 
 Sample Hz is sent to firmware as `#SET SAMPLE_RATE_HZ <value>` after `Apply Device Settings`.
 
-Choose the channel count before starting a recording. If recorded samples are present, clear the recording before changing signal mode or channel count so the exported CSV keeps one consistent shape.
+Choose the channel count in `Signal Settings` before starting a recording. If recorded samples are present, clear the recording before changing signal mode or channel count so the exported CSV keeps one consistent shape.
 
 ## Recording Data
 
@@ -119,9 +123,11 @@ CSV exports use invariant-culture numeric formatting and include timestamps in s
 ```text
 # mode=Generic two-channel
 # channel_count=2
-# channel_0_label=Channel 0
+# channel_0_pin=A0
+# channel_0_label=A0
 # channel_0_unit=ADC counts
-# channel_1_label=Channel 1
+# channel_1_pin=A1
+# channel_1_label=A1
 # channel_1_unit=ADC counts
 # adc_bits=14
 # reference_voltage=5

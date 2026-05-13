@@ -102,7 +102,8 @@ public static class CsvRecordingExporter
 
         for (int channelIndex = 0; channelIndex < metadata.ChannelCount; channelIndex++)
         {
-            yield return $"# channel_{channelIndex}_label={SanitizeMetadataValue(GetMetadataValue(metadata.ChannelLabels, channelIndex, $"Channel {channelIndex}"))}";
+            yield return $"# channel_{channelIndex}_pin=A{channelIndex.ToString(CultureInfo.InvariantCulture)}";
+            yield return $"# channel_{channelIndex}_label={SanitizeMetadataValue(GetMetadataValue(metadata.ChannelLabels, channelIndex, $"A{channelIndex}"))}";
             yield return $"# channel_{channelIndex}_unit={SanitizeMetadataValue(GetMetadataValue(metadata.ChannelUnits, channelIndex, "ADC counts"))}";
         }
 

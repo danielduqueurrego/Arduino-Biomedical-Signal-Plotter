@@ -16,8 +16,8 @@ public static class SignalConfigurationService
             SignalMode.Custom,
             "Custom",
             AnalogChannelLimits.Default,
-            "Channel 0",
-            "Channel 1",
+            "A0",
+            "A1",
             "ADC counts",
             "ADC counts",
             DefaultPlotWindowSeconds),
@@ -25,8 +25,8 @@ public static class SignalConfigurationService
             SignalMode.GenericTwoChannel,
             "Generic two-channel",
             2,
-            "Channel 0",
-            "Channel 1",
+            "A0",
+            "A1",
             "ADC counts",
             "ADC counts",
             DefaultPlotWindowSeconds),
@@ -217,7 +217,7 @@ public static class SignalConfigurationService
 
         for (int i = 2; i < channels.Length; i++)
         {
-            channels[i] = new ChannelConfiguration($"Channel {i}", "ADC counts");
+            channels[i] = new ChannelConfiguration($"A{i}", "ADC counts");
         }
 
         return channels;
@@ -244,7 +244,7 @@ public static class SignalConfigurationService
         {
             copy[i] = i < channels.Count
                 ? channels[i]
-                : new ChannelConfiguration($"Channel {i}", "ADC counts");
+                : new ChannelConfiguration($"A{i}", "ADC counts");
         }
 
         return copy;

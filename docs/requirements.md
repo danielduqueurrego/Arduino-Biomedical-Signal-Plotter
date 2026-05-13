@@ -30,6 +30,10 @@ The first version should prove that the app can:
 
 10\. Upload Arduino firmware from the GUI using Arduino CLI when available.
 
+11\. Keep detailed signal/channel configuration in a Signal Settings dialog or panel so the main window has more room for plotting.
+
+12\. Identify app channels by Arduino analog pin names A0 through A5 while preserving editable channel labels and units.
+
 
 
 \## Not included in Version 0.1
