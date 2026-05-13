@@ -156,10 +156,15 @@ public partial class MainWindow : Window
                         _signalConfiguration.Channels[channelIndex].Label,
                         channelIndex);
                 }
-
-                plot.Plot.Axes.AutoScale();
-                ApplyPlotWindow(plot, displayedSnapshot);
             }
+
+            bool hasReferenceBars = AddReferenceBars(plot, plotIndex, displayedSnapshot);
+            if ((displayedSnapshot.Count > 1 && visibleChannelIndices.Length > 0) || hasReferenceBars)
+            {
+                plot.Plot.Axes.AutoScale();
+            }
+
+            ApplyPlotWindow(plot, displayedSnapshot);
             ApplyYRange(plot, plotIndex);
             plot.Refresh();
         }
@@ -193,9 +198,46 @@ public partial class MainWindow : Window
 
     private void ApplyPlotWindow(AvaPlot plot, SignalSnapshot snapshot)
     {
-        double lastTime = snapshot.TimeSeconds[^1];
-        double firstVisibleTime = Math.Max(snapshot.TimeSeconds[0], lastTime - _signalConfiguration.PlotWindowSeconds);
+        double lastTime = snapshot.Count > 0
+            ? snapshot.TimeSeconds[^1]
+            : _signalConfiguration.PlotWindowSeconds;
+        double firstVisibleTime = snapshot.Count > 0
+            ? Math.Max(snapshot.TimeSeconds[0], lastTime - _signalConfiguration.PlotWindowSeconds)
+            : 0;
         plot.Plot.Axes.SetLimitsX(firstVisibleTime, lastTime);
+    }
+
+    private bool AddReferenceBars(AvaPlot plot, int plotIndex, SignalSnapshot snapshot)
+    {
+        ReferenceBarConfiguration[] enabledReferenceBars = _signalConfiguration.PlotLayout.PlotPanels[plotIndex]
+            .ReferenceBars
+            .Where(bar => bar.IsEnabled)
+            .ToArray();
+
+        if (enabledReferenceBars.Length == 0)
+        {
+            return false;
+        }
+
+        double xMaximum = snapshot.Count > 0
+            ? snapshot.TimeSeconds[^1]
+            : _signalConfiguration.PlotWindowSeconds;
+        double xMinimum = snapshot.Count > 0
+            ? Math.Max(snapshot.TimeSeconds[0], xMaximum - _signalConfiguration.PlotWindowSeconds)
+            : 0;
+
+        for (int barIndex = 0; barIndex < enabledReferenceBars.Length; barIndex++)
+        {
+            ReferenceBarConfiguration referenceBar = enabledReferenceBars[barIndex];
+            var barPlot = plot.Plot.Add.Scatter(
+                new double[] { xMinimum, xMaximum },
+                new double[] { referenceBar.Value, referenceBar.Value });
+            barPlot.LegendText = string.IsNullOrWhiteSpace(referenceBar.Label)
+                ? $"Reference {barIndex + 1}"
+                : referenceBar.Label;
+        }
+
+        return true;
     }
 
     private void ApplyYRange(AvaPlot plot, int plotIndex)

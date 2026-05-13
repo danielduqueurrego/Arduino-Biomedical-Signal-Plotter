@@ -2,13 +2,13 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        mc:Ignorable="d" d:DesignWidth="620" d:DesignHeight="360"
+        mc:Ignorable="d" d:DesignWidth="760" d:DesignHeight="640"
         x:Class="BiomedicalSignalPlotter.PlotDisplaySettingsWindow"
         Title="Plot Display"
-        Width="620"
-        Height="360"
-        MinWidth="560"
-        MinHeight="320"
+        Width="760"
+        Height="640"
+        MinWidth="680"
+        MinHeight="520"
         WindowStartupLocation="CenterOwner">
     <Grid RowDefinitions="Auto,*,Auto"
           RowSpacing="14"
@@ -31,75 +31,82 @@
                      Grid.Column="3" />
         </Grid>
 
-        <StackPanel Grid.Row="1"
-                    Spacing="8">
-            <Grid ColumnDefinitions="80,Auto,90,90,*"
-                  ColumnSpacing="10">
-                <TextBlock Grid.Column="0"
-                           Text="Plot"
-                           FontWeight="SemiBold" />
-                <TextBlock Grid.Column="1"
-                           Text="Y axis"
-                           FontWeight="SemiBold" />
-                <TextBlock Grid.Column="2"
-                           Text="Y min"
-                           FontWeight="SemiBold" />
-                <TextBlock Grid.Column="3"
-                           Text="Y max"
-                           FontWeight="SemiBold" />
-            </Grid>
+        <ScrollViewer Grid.Row="1"
+                      VerticalScrollBarVisibility="Auto">
+            <StackPanel Spacing="14">
+                <StackPanel x:Name="Plot1Panel"
+                            Spacing="6">
+                    <TextBlock Text="Plot 1"
+                               FontWeight="SemiBold" />
+                    <Grid ColumnDefinitions="Auto,90,90,*"
+                          ColumnSpacing="10">
+                        <CheckBox x:Name="Plot1AutoYCheckBox"
+                                  Grid.Column="0"
+                                  Content="Auto Y"
+                                  Checked="AutoYCheckBox_Changed"
+                                  Unchecked="AutoYCheckBox_Changed" />
+                        <TextBox x:Name="Plot1YMinimumTextBox"
+                                 Grid.Column="1"
+                                 Watermark="Y min" />
+                        <TextBox x:Name="Plot1YMaximumTextBox"
+                                 Grid.Column="2"
+                                 Watermark="Y max" />
+                    </Grid>
+                    <TextBlock Text="Reference bars use the current displayed Y-axis units."
+                               FontSize="12" />
+                    <StackPanel x:Name="Plot1ReferenceBarsPanel"
+                                Spacing="4" />
+                </StackPanel>
 
-            <Grid x:Name="Plot1Panel"
-                  ColumnDefinitions="80,Auto,90,90,*"
-                  ColumnSpacing="10">
-                <TextBlock Grid.Column="0"
-                           Text="Plot 1"
-                           VerticalAlignment="Center" />
-                <CheckBox x:Name="Plot1AutoYCheckBox"
-                          Grid.Column="1"
-                          Content="Auto Y"
-                          Checked="AutoYCheckBox_Changed"
-                          Unchecked="AutoYCheckBox_Changed" />
-                <TextBox x:Name="Plot1YMinimumTextBox"
-                         Grid.Column="2" />
-                <TextBox x:Name="Plot1YMaximumTextBox"
-                         Grid.Column="3" />
-            </Grid>
+                <StackPanel x:Name="Plot2Panel"
+                            Spacing="6">
+                    <TextBlock Text="Plot 2"
+                               FontWeight="SemiBold" />
+                    <Grid ColumnDefinitions="Auto,90,90,*"
+                          ColumnSpacing="10">
+                        <CheckBox x:Name="Plot2AutoYCheckBox"
+                                  Grid.Column="0"
+                                  Content="Auto Y"
+                                  Checked="AutoYCheckBox_Changed"
+                                  Unchecked="AutoYCheckBox_Changed" />
+                        <TextBox x:Name="Plot2YMinimumTextBox"
+                                 Grid.Column="1"
+                                 Watermark="Y min" />
+                        <TextBox x:Name="Plot2YMaximumTextBox"
+                                 Grid.Column="2"
+                                 Watermark="Y max" />
+                    </Grid>
+                    <TextBlock Text="Reference bars use the current displayed Y-axis units."
+                               FontSize="12" />
+                    <StackPanel x:Name="Plot2ReferenceBarsPanel"
+                                Spacing="4" />
+                </StackPanel>
 
-            <Grid x:Name="Plot2Panel"
-                  ColumnDefinitions="80,Auto,90,90,*"
-                  ColumnSpacing="10">
-                <TextBlock Grid.Column="0"
-                           Text="Plot 2"
-                           VerticalAlignment="Center" />
-                <CheckBox x:Name="Plot2AutoYCheckBox"
-                          Grid.Column="1"
-                          Content="Auto Y"
-                          Checked="AutoYCheckBox_Changed"
-                          Unchecked="AutoYCheckBox_Changed" />
-                <TextBox x:Name="Plot2YMinimumTextBox"
-                         Grid.Column="2" />
-                <TextBox x:Name="Plot2YMaximumTextBox"
-                         Grid.Column="3" />
-            </Grid>
-
-            <Grid x:Name="Plot3Panel"
-                  ColumnDefinitions="80,Auto,90,90,*"
-                  ColumnSpacing="10">
-                <TextBlock Grid.Column="0"
-                           Text="Plot 3"
-                           VerticalAlignment="Center" />
-                <CheckBox x:Name="Plot3AutoYCheckBox"
-                          Grid.Column="1"
-                          Content="Auto Y"
-                          Checked="AutoYCheckBox_Changed"
-                          Unchecked="AutoYCheckBox_Changed" />
-                <TextBox x:Name="Plot3YMinimumTextBox"
-                         Grid.Column="2" />
-                <TextBox x:Name="Plot3YMaximumTextBox"
-                         Grid.Column="3" />
-            </Grid>
-        </StackPanel>
+                <StackPanel x:Name="Plot3Panel"
+                            Spacing="6">
+                    <TextBlock Text="Plot 3"
+                               FontWeight="SemiBold" />
+                    <Grid ColumnDefinitions="Auto,90,90,*"
+                          ColumnSpacing="10">
+                        <CheckBox x:Name="Plot3AutoYCheckBox"
+                                  Grid.Column="0"
+                                  Content="Auto Y"
+                                  Checked="AutoYCheckBox_Changed"
+                                  Unchecked="AutoYCheckBox_Changed" />
+                        <TextBox x:Name="Plot3YMinimumTextBox"
+                                 Grid.Column="1"
+                                 Watermark="Y min" />
+                        <TextBox x:Name="Plot3YMaximumTextBox"
+                                 Grid.Column="2"
+                                 Watermark="Y max" />
+                    </Grid>
+                    <TextBlock Text="Reference bars use the current displayed Y-axis units."
+                               FontSize="12" />
+                    <StackPanel x:Name="Plot3ReferenceBarsPanel"
+                                Spacing="4" />
+                </StackPanel>
+            </StackPanel>
+        </ScrollViewer>
 
         <Grid Grid.Row="2"
               ColumnDefinitions="*,Auto,Auto"

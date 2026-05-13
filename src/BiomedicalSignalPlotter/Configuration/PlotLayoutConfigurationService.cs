@@ -7,6 +7,7 @@ public static class PlotLayoutConfigurationService
     public const int MinimumPlotCount = 1;
     public const int MaximumPlotCount = 3;
     public const int DefaultPlotCount = 1;
+    public const int MaximumReferenceBarsPerPlot = 5;
     public const double DefaultManualYMinimum = 0.0;
     public const double DefaultManualYMaximum = 1.0;
 
@@ -20,9 +21,17 @@ public static class PlotLayoutConfigurationService
     public static PlotPanelConfiguration CreateDefaultPanel()
     {
         return new PlotPanelConfiguration(
-            UseAutoYRange: true,
+            useAutoYRange: true,
             DefaultManualYMinimum,
             DefaultManualYMaximum);
+    }
+
+    public static ReferenceBarConfiguration CreateDefaultReferenceBar()
+    {
+        return new ReferenceBarConfiguration(
+            IsEnabled: false,
+            Value: 0.0,
+            Label: string.Empty);
     }
 
     public static int ValidatePlotCount(int plotCount)
@@ -103,6 +112,46 @@ public static class PlotLayoutConfigurationService
             panels);
     }
 
+    public static PlotLayoutConfiguration ApplyReferenceBar(
+        PlotLayoutConfiguration configuration,
+        int plotIndex,
+        int referenceBarIndex,
+        bool isEnabled,
+        double value,
+        string label)
+    {
+        ValidatePlotIndex(plotIndex);
+        ValidateReferenceBarIndex(referenceBarIndex);
+        ValidateReferenceBarValue(value);
+
+        PlotPanelConfiguration[] panels = configuration.PlotPanels.ToArray();
+        PlotPanelConfiguration panel = panels[plotIndex];
+        ReferenceBarConfiguration[] bars = panel.ReferenceBars.ToArray();
+        bars[referenceBarIndex] = new ReferenceBarConfiguration(
+            isEnabled,
+            value,
+            NormalizeReferenceBarLabel(label));
+
+        panels[plotIndex] = new PlotPanelConfiguration(
+            panel.UseAutoYRange,
+            panel.ManualYMinimum,
+            panel.ManualYMaximum,
+            bars);
+
+        return new PlotLayoutConfiguration(
+            configuration.PlotCount,
+            configuration.ChannelAssignments,
+            panels);
+    }
+
+    public static void ValidateReferenceBarValue(double value)
+    {
+        if (!double.IsFinite(value))
+        {
+            throw new ArgumentOutOfRangeException(nameof(value), "Reference bar value must be a finite number.");
+        }
+    }
+
     public static void ValidateManualYRange(double manualYMinimum, double manualYMaximum)
     {
         if (!double.IsFinite(manualYMinimum) ||
@@ -174,5 +223,20 @@ public static class PlotLayoutConfigurationService
         {
             throw new ArgumentOutOfRangeException(nameof(plotIndex), "Plot index must be between 0 and 2.");
         }
+    }
+
+    private static void ValidateReferenceBarIndex(int referenceBarIndex)
+    {
+        if (referenceBarIndex is < 0 or >= MaximumReferenceBarsPerPlot)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(referenceBarIndex),
+                $"Reference bar index must be between 0 and {MaximumReferenceBarsPerPlot - 1}.");
+        }
+    }
+
+    private static string NormalizeReferenceBarLabel(string label)
+    {
+        return string.IsNullOrWhiteSpace(label) ? string.Empty : label.Trim();
     }
 }

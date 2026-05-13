@@ -1,6 +1,7 @@
 using System.Globalization;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
+using Avalonia.Layout;
 using BiomedicalSignalPlotter.Configuration;
 
 namespace BiomedicalSignalPlotter;
@@ -18,6 +19,10 @@ public partial class PlotDisplaySettingsWindow : Window
     private CheckBox[] _autoYCheckBoxes = [];
     private TextBox[] _yMinimumTextBoxes = [];
     private TextBox[] _yMaximumTextBoxes = [];
+    private CheckBox[][] _referenceBarEnabledCheckBoxes = [];
+    private TextBox[][] _referenceBarValueTextBoxes = [];
+    private TextBox[][] _referenceBarLabelTextBoxes = [];
+    private StackPanel[] _referenceBarPanels = [];
     private Control[] _plotPanels = [];
     private SignalConfiguration _configuration;
     private bool _isUpdatingUi;
@@ -70,7 +75,14 @@ public partial class PlotDisplaySettingsWindow : Window
             Plot2Panel,
             Plot3Panel
         ];
+        _referenceBarPanels =
+        [
+            Plot1ReferenceBarsPanel,
+            Plot2ReferenceBarsPanel,
+            Plot3ReferenceBarsPanel
+        ];
 
+        InitializeReferenceBarControls();
         TimeWindowComboBox.ItemsSource = _timeWindowOptions;
         UpdateSettingsUi();
     }
@@ -96,6 +108,14 @@ public partial class PlotDisplaySettingsWindow : Window
                 _autoYCheckBoxes[plotIndex].IsChecked = panel.UseAutoYRange;
                 _yMinimumTextBoxes[plotIndex].Text = FormatDouble(panel.ManualYMinimum);
                 _yMaximumTextBoxes[plotIndex].Text = FormatDouble(panel.ManualYMaximum);
+
+                for (int referenceBarIndex = 0; referenceBarIndex < PlotLayoutConfigurationService.MaximumReferenceBarsPerPlot; referenceBarIndex++)
+                {
+                    ReferenceBarConfiguration referenceBar = panel.ReferenceBars[referenceBarIndex];
+                    _referenceBarEnabledCheckBoxes[plotIndex][referenceBarIndex].IsChecked = referenceBar.IsEnabled;
+                    _referenceBarValueTextBoxes[plotIndex][referenceBarIndex].Text = FormatDouble(referenceBar.Value);
+                    _referenceBarLabelTextBoxes[plotIndex][referenceBarIndex].Text = referenceBar.Label;
+                }
             }
         }
         finally
@@ -104,6 +124,7 @@ public partial class PlotDisplaySettingsWindow : Window
         }
 
         UpdateYRangeTextBoxStates();
+        UpdateReferenceBarTextBoxStates();
     }
 
     private void TimeWindowComboBox_SelectionChanged(object? sender, SelectionChangedEventArgs e)
@@ -125,6 +146,14 @@ public partial class PlotDisplaySettingsWindow : Window
         if (!_isUpdatingUi)
         {
             UpdateYRangeTextBoxStates();
+        }
+    }
+
+    private void ReferenceBarCheckBox_Changed(object? sender, RoutedEventArgs e)
+    {
+        if (!_isUpdatingUi)
+        {
+            UpdateReferenceBarTextBoxStates();
         }
     }
 
@@ -164,6 +193,28 @@ public partial class PlotDisplaySettingsWindow : Window
                     useAutoYRange,
                     manualYMinimum,
                     manualYMaximum);
+
+                for (int referenceBarIndex = 0; referenceBarIndex < PlotLayoutConfigurationService.MaximumReferenceBarsPerPlot; referenceBarIndex++)
+                {
+                    ReferenceBarConfiguration currentBar = plotLayout.PlotPanels[plotIndex].ReferenceBars[referenceBarIndex];
+                    bool isEnabled = _referenceBarEnabledCheckBoxes[plotIndex][referenceBarIndex].IsChecked == true;
+                    double value = currentBar.Value;
+
+                    if (isEnabled &&
+                        !TryParseDouble(_referenceBarValueTextBoxes[plotIndex][referenceBarIndex].Text, out value))
+                    {
+                        PlotDisplayStatusText.Text = $"Enter a numeric reference bar value for Plot {plotIndex + 1}, Bar {referenceBarIndex + 1}.";
+                        return;
+                    }
+
+                    plotLayout = PlotLayoutConfigurationService.ApplyReferenceBar(
+                        plotLayout,
+                        plotIndex,
+                        referenceBarIndex,
+                        isEnabled,
+                        value,
+                        _referenceBarLabelTextBoxes[plotIndex][referenceBarIndex].Text ?? string.Empty);
+                }
             }
 
             Result = updatedConfiguration with { PlotLayout = plotLayout };
@@ -213,6 +264,69 @@ public partial class PlotDisplaySettingsWindow : Window
             bool useAutoYRange = _autoYCheckBoxes[plotIndex].IsChecked == true;
             _yMinimumTextBoxes[plotIndex].IsEnabled = !useAutoYRange;
             _yMaximumTextBoxes[plotIndex].IsEnabled = !useAutoYRange;
+        }
+    }
+
+    private void UpdateReferenceBarTextBoxStates()
+    {
+        for (int plotIndex = 0; plotIndex < PlotLayoutConfigurationService.MaximumPlotCount; plotIndex++)
+        {
+            for (int referenceBarIndex = 0; referenceBarIndex < PlotLayoutConfigurationService.MaximumReferenceBarsPerPlot; referenceBarIndex++)
+            {
+                bool isEnabled = _referenceBarEnabledCheckBoxes[plotIndex][referenceBarIndex].IsChecked == true;
+                _referenceBarValueTextBoxes[plotIndex][referenceBarIndex].IsEnabled = isEnabled;
+                _referenceBarLabelTextBoxes[plotIndex][referenceBarIndex].IsEnabled = isEnabled;
+            }
+        }
+    }
+
+    private void InitializeReferenceBarControls()
+    {
+        _referenceBarEnabledCheckBoxes = new CheckBox[PlotLayoutConfigurationService.MaximumPlotCount][];
+        _referenceBarValueTextBoxes = new TextBox[PlotLayoutConfigurationService.MaximumPlotCount][];
+        _referenceBarLabelTextBoxes = new TextBox[PlotLayoutConfigurationService.MaximumPlotCount][];
+
+        for (int plotIndex = 0; plotIndex < PlotLayoutConfigurationService.MaximumPlotCount; plotIndex++)
+        {
+            _referenceBarEnabledCheckBoxes[plotIndex] = new CheckBox[PlotLayoutConfigurationService.MaximumReferenceBarsPerPlot];
+            _referenceBarValueTextBoxes[plotIndex] = new TextBox[PlotLayoutConfigurationService.MaximumReferenceBarsPerPlot];
+            _referenceBarLabelTextBoxes[plotIndex] = new TextBox[PlotLayoutConfigurationService.MaximumReferenceBarsPerPlot];
+
+            _referenceBarPanels[plotIndex].Children.Clear();
+
+            for (int referenceBarIndex = 0; referenceBarIndex < PlotLayoutConfigurationService.MaximumReferenceBarsPerPlot; referenceBarIndex++)
+            {
+                CheckBox enabledCheckBox = new()
+                {
+                    Content = $"Bar {referenceBarIndex + 1}",
+                    Width = 80
+                };
+                enabledCheckBox.IsCheckedChanged += ReferenceBarCheckBox_Changed;
+
+                TextBox valueTextBox = new()
+                {
+                    Width = 110,
+                    Watermark = "Value"
+                };
+                TextBox labelTextBox = new()
+                {
+                    Width = 220,
+                    Watermark = "Label"
+                };
+                StackPanel row = new()
+                {
+                    Orientation = Orientation.Horizontal,
+                    Spacing = 8
+                };
+                row.Children.Add(enabledCheckBox);
+                row.Children.Add(valueTextBox);
+                row.Children.Add(labelTextBox);
+                _referenceBarPanels[plotIndex].Children.Add(row);
+
+                _referenceBarEnabledCheckBoxes[plotIndex][referenceBarIndex] = enabledCheckBox;
+                _referenceBarValueTextBoxes[plotIndex][referenceBarIndex] = valueTextBox;
+                _referenceBarLabelTextBoxes[plotIndex][referenceBarIndex] = labelTextBox;
+            }
         }
     }
 

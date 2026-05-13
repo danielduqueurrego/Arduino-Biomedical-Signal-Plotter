@@ -18,6 +18,8 @@ public class PlotLayoutConfigurationServiceTests
             Assert.True(panel.UseAutoYRange);
             Assert.Equal(0.0, panel.ManualYMinimum);
             Assert.Equal(1.0, panel.ManualYMaximum);
+            Assert.Equal(5, panel.ReferenceBars.Length);
+            Assert.All(panel.ReferenceBars, referenceBar => Assert.False(referenceBar.IsEnabled));
         });
     }
 
@@ -131,5 +133,78 @@ public class PlotLayoutConfigurationServiceTests
                 useAutoYRange: false,
                 manualYMinimum: yMinimum,
                 manualYMaximum: yMaximum));
+    }
+
+    [Fact]
+    public void ApplyReferenceBar_EnablesReferenceBar()
+    {
+        PlotLayoutConfiguration configuration = PlotLayoutConfigurationService.ApplyReferenceBar(
+            PlotLayoutConfigurationService.CreateDefault(),
+            plotIndex: 0,
+            referenceBarIndex: 0,
+            isEnabled: true,
+            value: 512.0,
+            label: "Target ADC");
+
+        ReferenceBarConfiguration referenceBar = configuration.PlotPanels[0].ReferenceBars[0];
+        Assert.True(referenceBar.IsEnabled);
+        Assert.Equal(512.0, referenceBar.Value);
+        Assert.Equal("Target ADC", referenceBar.Label);
+    }
+
+    [Fact]
+    public void ApplyReferenceBar_DisablesReferenceBar()
+    {
+        PlotLayoutConfiguration configuration = PlotLayoutConfigurationService.ApplyReferenceBar(
+            PlotLayoutConfigurationService.CreateDefault(),
+            plotIndex: 0,
+            referenceBarIndex: 0,
+            isEnabled: true,
+            value: 512.0,
+            label: "Target ADC");
+
+        PlotLayoutConfiguration disabled = PlotLayoutConfigurationService.ApplyReferenceBar(
+            configuration,
+            plotIndex: 0,
+            referenceBarIndex: 0,
+            isEnabled: false,
+            value: 512.0,
+            label: "Target ADC");
+
+        Assert.False(disabled.PlotPanels[0].ReferenceBars[0].IsEnabled);
+        Assert.Equal(512.0, disabled.PlotPanels[0].ReferenceBars[0].Value);
+    }
+
+    [Fact]
+    public void ApplyReferenceBar_RejectsInvalidValue()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            PlotLayoutConfigurationService.ApplyReferenceBar(
+                PlotLayoutConfigurationService.CreateDefault(),
+                plotIndex: 0,
+                referenceBarIndex: 0,
+                isEnabled: true,
+                value: double.PositiveInfinity,
+                label: "Invalid"));
+    }
+
+    [Fact]
+    public void ApplyReferenceBar_StoresBarsPerSubplotIndependently()
+    {
+        PlotLayoutConfiguration configuration = PlotLayoutConfigurationService.ApplyPlotCount(
+            PlotLayoutConfigurationService.CreateDefault(),
+            2);
+
+        PlotLayoutConfiguration updated = PlotLayoutConfigurationService.ApplyReferenceBar(
+            configuration,
+            plotIndex: 1,
+            referenceBarIndex: 0,
+            isEnabled: true,
+            value: 2.5,
+            label: "Voltage target");
+
+        Assert.False(updated.PlotPanels[0].ReferenceBars[0].IsEnabled);
+        Assert.True(updated.PlotPanels[1].ReferenceBars[0].IsEnabled);
+        Assert.Equal(2.5, updated.PlotPanels[1].ReferenceBars[0].Value);
     }
 }

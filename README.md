@@ -81,7 +81,9 @@ The app can show 1 to 3 vertically stacked plots. In `Signal Settings`, choose t
 
 Click `Plot Display` to adjust display-only plot controls. The global time window controls how many seconds of recent data are visible; common choices include 2, 5, 10, and 30 seconds, and custom positive values are supported. Each visible subplot can use automatic Y scaling or a manual Y minimum and maximum. Manual Y limits are per subplot, and invalid ranges where the minimum is not less than the maximum are rejected with a status message.
 
-Plot display settings affect live visualization only. They do not change serial parsing, firmware settings, recording, or exported CSV data, so they can be changed while recording.
+Each subplot can also show up to five horizontal reference bars. A reference bar has an enabled checkbox, a numeric value, and an optional label, such as a target `512` ADC count or `2.5` V level. The entered value uses the current displayed Y-axis units for that subplot. If a subplot contains multiple signals with different units, the bar is still allowed, but students should interpret it in the plot's displayed Y-axis units.
+
+Plot display settings and reference bars affect live visualization only. They do not change serial parsing, firmware settings, recording, or exported CSV data, and they are not included in CSV metadata, so they can be changed while recording.
 
 If a preset is selected and a channel label or unit is edited manually, the app switches to Custom mode while preserving the edited text.
 

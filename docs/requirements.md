@@ -38,6 +38,8 @@ The first version should prove that the app can:
 
 14\. Allow display-only plot time window and per-subplot Y-axis range configuration.
 
+15\. Allow display-only horizontal reference bars on each subplot.
+
 
 
 \## Not included in Version 0.1
