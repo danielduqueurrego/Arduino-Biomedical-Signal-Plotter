@@ -6,6 +6,7 @@ public interface ISerialService : IAsyncDisposable
 {
     event EventHandler<SignalSample>? SampleReceived;
     event EventHandler<string>? StatusChanged;
+    event EventHandler<string>? MetadataReceived;
 
     bool IsConnected { get; }
 
@@ -16,6 +17,8 @@ public interface ISerialService : IAsyncDisposable
     string[] GetAvailablePorts();
 
     void Connect(string portName, int baudRate = 115_200);
+
+    Task SendLineAsync(string line, CancellationToken cancellationToken = default);
 
     Task DisconnectAsync();
 }

@@ -3,6 +3,12 @@ $ErrorActionPreference = 'Stop'
 $expectedFqbn = 'arduino:renesas_uno:unor4wifi'
 $sketchPath = Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..\firmware\arduino\TwoChannelCsvStreamer')
 
+if (-not (Get-Command arduino-cli -ErrorAction SilentlyContinue)) {
+    throw 'Arduino CLI is required to upload firmware. Install Arduino CLI and make sure arduino-cli is available on PATH.'
+}
+
+arduino-cli version
+
 Write-Host 'Detecting connected Arduino boards...'
 $boardListJson = arduino-cli board list --json
 $boardList = $boardListJson | ConvertFrom-Json

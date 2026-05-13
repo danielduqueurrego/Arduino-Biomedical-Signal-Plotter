@@ -53,7 +53,7 @@ Run tests:
 dotnet test
 ```
 
-## Signal Modes And Display
+## Display Settings
 
 The app includes lightweight display presets so the same Arduino stream can be used in different lab activities:
 
@@ -69,16 +69,10 @@ These presets only set display labels, units, and the default plot time window. 
 Custom mode lets users edit:
 
 - active channel labels and units
-- channel count from 1 to 6
-- ADC bits
 - reference voltage
 - display mode
 
 If a preset is selected and a channel label or unit is edited manually, the app switches to Custom mode while preserving the edited text.
-
-The channel count control selects how many values the app expects per serial row and how many channels are plotted and recorded. The default is 2. Single-channel presets such as ECG, PPG / Pulse Oximetry, and Blood Pressure default to 1 channel; Generic two-channel and EMG + Force/Pressure default to 2 channels.
-
-Choose the channel count before starting a recording. If recorded samples are present, clear the recording before changing signal mode or channel count so the exported CSV keeps one consistent shape.
 
 Display mode can show raw ADC counts or voltage. Voltage display uses:
 
@@ -86,7 +80,24 @@ Display mode can show raw ADC counts or voltage. Voltage display uses:
 voltage = raw_count * reference_voltage / (2^adc_bits - 1)
 ```
 
-The included UNO R4 WiFi firmware configures `analogReadResolution(10)`, so the app default is 10 ADC bits. Change ADC bits and reference voltage if your firmware or lab hardware uses different settings.
+Reference voltage is currently used only for app-side voltage conversion. It does not configure an Arduino hardware reference voltage.
+
+## Device Settings
+
+Device settings are sent to the Arduino only when a serial connection is active and `Apply Device Settings` is clicked. The app sends `#STOP`, applies the settings, asks for `#STATUS`, then sends `#START`.
+
+Device settings include:
+
+- channel count: 1 to 6
+- ADC bits: 8 to 14
+- sample rate: 1 to 1000 Hz
+- streaming state, controlled by `#START` and `#STOP`
+
+The channel count control selects how many values the app expects per serial row and how many channels are plotted and recorded. The default is 2. Single-channel presets such as ECG, PPG / Pulse Oximetry, and Blood Pressure default to 1 channel; Generic two-channel and EMG + Force/Pressure default to 2 channels.
+
+ADC bits configure Arduino `analogReadResolution(adcBits)` after `Apply Device Settings`. The app also uses the selected ADC bits when displaying raw counts as voltage.
+
+Choose the channel count before starting a recording. If recorded samples are present, clear the recording before changing signal mode or channel count so the exported CSV keeps one consistent shape.
 
 ## Recording Data
 
@@ -108,7 +119,7 @@ CSV exports use invariant-culture numeric formatting and include timestamps in s
 # channel_0_unit=ADC counts
 # channel_1_label=Channel 1
 # channel_1_unit=ADC counts
-# adc_bits=10
+# adc_bits=14
 # reference_voltage=5
 # display_mode=Raw ADC counts
 time_s,channel_0,channel_1,source
@@ -141,13 +152,40 @@ The app expects numeric-only CSV rows with exactly the selected channel count. S
 
 Blank lines, malformed lines, and metadata lines beginning with `#` are ignored by the parser. The firmware does not print a plain text header by default.
 
+The firmware also accepts runtime text commands:
+
+```text
+#SET CHANNEL_COUNT 6
+#SET ADC_BITS 14
+#SET SAMPLE_RATE_HZ 250
+#STOP
+#STATUS
+#START
+```
+
+Firmware responses also begin with `#`, so they are ignored as data:
+
+```text
+#OK CHANNEL_COUNT 6
+#OK ADC_BITS 14
+#OK SAMPLE_RATE_HZ 250
+#STATUS CHANNEL_COUNT=6 ADC_BITS=14 SAMPLE_RATE_HZ=250 STREAMING=1
+#ERR BAD_VALUE
+```
+
 ## Arduino Firmware
 
-The Arduino sketch is in `firmware/arduino/TwoChannelCsvStreamer/`. It targets the Arduino UNO R4 WiFi, reads a compile-time configured contiguous channel range from `A0` through `A5`, and streams raw ADC values at 250 Hz. The default firmware channel count is 2 (`A0,A1`) to preserve current behavior.
+The Arduino sketch is in `firmware/arduino/TwoChannelCsvStreamer/`. It targets the Arduino UNO R4 WiFi, reads a runtime configured contiguous channel range from `A0` through `A5`, and streams raw ADC values at 250 Hz by default. The default firmware channel count is 2 (`A0,A1`) to preserve current behavior. The default ADC resolution is 14 bits.
 
-Channel count is currently selected independently in the app and compile-time configured in firmware by changing `CHANNEL_COUNT` in the sketch. Dynamic Arduino reconfiguration will be added later.
+Arduino CLI is required for students who need to upload or update firmware through this workflow. Arduino CLI is not required for simulation mode, CSV export, or plotting from an already programmed board.
 
-Arduino CLI is only needed by developers or instructors uploading firmware. Students running a packaged app should not need Arduino CLI.
+In the app, click `Check Arduino CLI` to run:
+
+```powershell
+arduino-cli version
+```
+
+You can install Arduino CLI from the official Arduino CLI installation instructions, then confirm it is on your `PATH` with the command above.
 
 List connected boards:
 

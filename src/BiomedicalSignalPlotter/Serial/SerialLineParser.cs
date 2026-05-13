@@ -6,6 +6,11 @@ namespace BiomedicalSignalPlotter.Serial;
 
 public sealed class SerialLineParser
 {
+    public static bool IsCommentOrMetadataLine(string? line)
+    {
+        return !string.IsNullOrWhiteSpace(line) && line.TrimStart().StartsWith('#');
+    }
+
     public bool TryParse(
         string? line,
         int expectedChannelCount,

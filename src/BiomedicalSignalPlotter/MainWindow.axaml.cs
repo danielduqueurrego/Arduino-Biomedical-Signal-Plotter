@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
+using BiomedicalSignalPlotter.Arduino;
 using BiomedicalSignalPlotter.Configuration;
 using BiomedicalSignalPlotter.Models;
 using BiomedicalSignalPlotter.Recording;
@@ -18,6 +19,7 @@ public partial class MainWindow : Window
     private readonly SimulatedDataService _simulatedDataService = new();
     private readonly ISerialService _serialService = new SerialService();
     private readonly RecordingService _recordingService = new();
+    private readonly ArduinoCliService _arduinoCliService = new();
     private readonly DispatcherTimer _plotRefreshTimer;
     private readonly int[] _channelCountOptions = Enumerable
         .Range(AnalogChannelLimits.Minimum, AnalogChannelLimits.Maximum)
@@ -31,6 +33,7 @@ public partial class MainWindow : Window
     private TextBox[] _channelUnitTextBoxes = [];
     private Control[] _channelConfigurationPanels = [];
     private SignalConfiguration _signalConfiguration = SignalConfigurationService.CreateDefault();
+    private int _deviceSampleRateHz = ArduinoDeviceSettingsLimits.DefaultSampleRateHz;
     private string _plotTitle = "Simulated data";
     private bool _isUpdatingConfigurationUi;
 
@@ -44,6 +47,7 @@ public partial class MainWindow : Window
         _simulatedDataService.SampleGenerated += SimulatedDataService_SampleGenerated;
         _serialService.SampleReceived += SerialService_SampleReceived;
         _serialService.StatusChanged += SerialService_StatusChanged;
+        _serialService.MetadataReceived += SerialService_MetadataReceived;
         RefreshSerialPorts(updateStatus: false);
 
         _plotRefreshTimer = new DispatcherTimer
@@ -81,6 +85,11 @@ public partial class MainWindow : Window
     private void SerialService_StatusChanged(object? sender, string status)
     {
         Dispatcher.UIThread.Post(() => StatusText.Text = status);
+    }
+
+    private void SerialService_MetadataReceived(object? sender, string metadata)
+    {
+        Dispatcher.UIThread.Post(() => DeviceResponseText.Text = $"Device response: {metadata}");
     }
 
     private void PlotRefreshTimer_Tick(object? sender, EventArgs e)
@@ -337,6 +346,68 @@ public partial class MainWindow : Window
         UpdateRecordingUi();
     }
 
+    private async void ApplyDeviceSettingsButton_Click(object? sender, RoutedEventArgs e)
+    {
+        if (!_serialService.IsConnected)
+        {
+            StatusText.Text = "Connect to Arduino before applying device settings.";
+            return;
+        }
+
+        int adcBits = TryParseInt(AdcBitsTextBox.Text, _signalConfiguration.AdcBits);
+        int sampleRateHz = TryParseInt(SampleRateHzTextBox.Text, _deviceSampleRateHz);
+
+        ArduinoDeviceSettings settings;
+        try
+        {
+            settings = new ArduinoDeviceSettings(_signalConfiguration.ChannelCount, adcBits, sampleRateHz);
+        }
+        catch (ArgumentOutOfRangeException ex)
+        {
+            StatusText.Text = ex.Message;
+            return;
+        }
+
+        _signalConfiguration = SignalConfigurationService.ApplyAdcSettings(
+            _signalConfiguration,
+            settings.AdcBits,
+            TryParseDouble(ReferenceVoltageTextBox.Text, _signalConfiguration.ReferenceVoltage));
+        _deviceSampleRateHz = settings.SampleRateHz;
+        ApplyActiveChannelCount(clearBuffer: true);
+        UpdateConfigurationUi();
+
+        try
+        {
+            DeviceResponseText.Text = "Device response: settings sent";
+            foreach (string command in ArduinoCommandBuilder.BuildApplySettingsSequence(settings))
+            {
+                await _serialService.SendLineAsync(command);
+            }
+
+            StatusText.Text = $"Applied device settings: {settings.ChannelCount} channel(s), {settings.AdcBits}-bit ADC, {settings.SampleRateHz} Hz.";
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
+        {
+            StatusText.Text = $"Unable to apply device settings: {ex.Message}";
+        }
+    }
+
+    private async void CheckArduinoCliButton_Click(object? sender, RoutedEventArgs e)
+    {
+        CheckArduinoCliButton.IsEnabled = false;
+        StatusText.Text = "Checking Arduino CLI...";
+
+        try
+        {
+            ArduinoCliCheckResult result = await _arduinoCliService.CheckAvailabilityAsync();
+            StatusText.Text = result.Message;
+        }
+        finally
+        {
+            CheckArduinoCliButton.IsEnabled = true;
+        }
+    }
+
     private void UpdateRecordingUi()
     {
         int count = _recordingService.Count;
@@ -403,6 +474,7 @@ public partial class MainWindow : Window
             }
 
             AdcBitsTextBox.Text = _signalConfiguration.AdcBits.ToString(CultureInfo.InvariantCulture);
+            SampleRateHzTextBox.Text = _deviceSampleRateHz.ToString(CultureInfo.InvariantCulture);
             ReferenceVoltageTextBox.Text = SignalConfigurationService.FormatReferenceVoltage(_signalConfiguration.ReferenceVoltage);
         }
         finally

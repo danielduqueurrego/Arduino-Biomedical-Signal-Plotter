@@ -30,19 +30,19 @@ Valid rows may include whitespace or decimal values:
 
 ## Arduino Output
 
-The `TwoChannelCsvStreamer` sketch now behaves as a configurable analog CSV streamer. It streams raw ADC values from an Arduino UNO R4 WiFi at 250 Hz, using the compile-time `CHANNEL_COUNT` setting:
+The `TwoChannelCsvStreamer` sketch now behaves as a runtime configurable analog CSV streamer. It streams raw ADC values from an Arduino UNO R4 WiFi at 250 Hz by default:
 
 ```text
 <A0 raw ADC value>,<A1 raw ADC value>,...
 ```
 
-The default firmware channel count is 2. It does not print a plain text header such as `A0,A1` by default.
+The default firmware channel count is 2, and the default ADC resolution is 14 bits. It does not print a plain text header such as `A0,A1` by default.
 
 ## Expected Channel Count
 
 The app channel count controls both parsing and display. If the app expects 2 channels, `512,310` is valid, while `512` and `512,310,203` are malformed. If the app expects 6 channels, rows with fewer or more than 6 values are malformed.
 
-The app and firmware are configured separately in Version 0.1. Dynamic Arduino reconfiguration will be added later.
+The app sends runtime commands when `Apply Device Settings` is clicked. The parser continues to ignore all command responses because they begin with `#`.
 
 ## Malformed Lines
 
@@ -67,6 +67,54 @@ Lines beginning with `#` are treated as comments or metadata and ignored:
 
 Future firmware may use `#` lines for optional metadata while preserving numeric CSV sample rows.
 
+## Runtime Commands
+
+Commands are text lines sent from the app to the Arduino over the same serial connection:
+
+```text
+#SET CHANNEL_COUNT 1
+#SET CHANNEL_COUNT 2
+#SET CHANNEL_COUNT 6
+#SET ADC_BITS 14
+#SET SAMPLE_RATE_HZ 250
+#START
+#STOP
+#STATUS
+```
+
+Supported ranges:
+
+- `CHANNEL_COUNT`: 1 to 6
+- `ADC_BITS`: 8 to 14
+- `SAMPLE_RATE_HZ`: 1 to 1000
+
+The app sends this sequence when applying device settings:
+
+```text
+#STOP
+#SET CHANNEL_COUNT <value>
+#SET ADC_BITS <value>
+#SET SAMPLE_RATE_HZ <value>
+#STATUS
+#START
+```
+
+## Runtime Responses
+
+Firmware responses are also comment/metadata lines:
+
+```text
+#OK CHANNEL_COUNT 6
+#OK ADC_BITS 14
+#OK SAMPLE_RATE_HZ 250
+#OK START
+#OK STOP
+#STATUS CHANNEL_COUNT=6 ADC_BITS=14 SAMPLE_RATE_HZ=250 STREAMING=1
+#ERR BAD_VALUE
+```
+
+Malformed or unsupported commands return `#ERR <short reason>`. These lines are not plotted or recorded.
+
 ## Future Notes
 
 Future protocol versions may add:
@@ -75,6 +123,5 @@ Future protocol versions may add:
 - sample-rate metadata
 - timestamps
 - checksums or framing
-- app-to-device channel-count configuration
 
 Any future extension should keep malformed input safe and avoid blocking the UI thread.

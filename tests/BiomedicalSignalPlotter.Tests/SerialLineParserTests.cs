@@ -36,6 +36,9 @@ public class SerialLineParserTests
     [InlineData("   ")]
     [InlineData("# A0,A1")]
     [InlineData("# channel_count=2")]
+    [InlineData("#OK CHANNEL_COUNT 2")]
+    [InlineData("#ERR BAD_VALUE")]
+    [InlineData("#STATUS CHANNEL_COUNT=2 ADC_BITS=14 SAMPLE_RATE_HZ=250 STREAMING=1")]
     public void TryParse_IgnoresBlankAndCommentLines(string line)
     {
         bool parsed = _parser.TryParse(line, expectedChannelCount: 2, out SerialChannelValues? values);

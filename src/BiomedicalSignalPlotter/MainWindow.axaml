@@ -10,7 +10,7 @@
         Height="740"
         MinWidth="960"
         MinHeight="620">
-    <Grid RowDefinitions="Auto,Auto,Auto,Auto,*,Auto"
+    <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,*,Auto"
           RowSpacing="12"
           Margin="16">
         <TextBlock Grid.Row="0"
@@ -44,10 +44,10 @@
         </Grid>
 
         <Grid Grid.Row="2"
-              RowDefinitions="Auto,Auto,Auto"
+              RowDefinitions="Auto,Auto,Auto,Auto"
               RowSpacing="8">
             <Grid Grid.Row="0"
-                  ColumnDefinitions="Auto,190,Auto,70,Auto,150,Auto,80,Auto,90,*"
+                  ColumnDefinitions="Auto,190,Auto,150,Auto,90,*"
                   ColumnSpacing="8"
                   VerticalAlignment="Center">
                 <TextBlock Grid.Column="0"
@@ -58,36 +58,56 @@
                           MinWidth="190"
                           SelectionChanged="SignalModeComboBox_SelectionChanged" />
                 <TextBlock Grid.Column="2"
-                           Text="Channels"
-                           VerticalAlignment="Center" />
-                <ComboBox x:Name="ChannelCountComboBox"
-                          Grid.Column="3"
-                          MinWidth="70"
-                          SelectionChanged="ChannelCountComboBox_SelectionChanged" />
-                <TextBlock Grid.Column="4"
                            Text="Display"
                            VerticalAlignment="Center" />
                 <ComboBox x:Name="DisplayModeComboBox"
-                          Grid.Column="5"
+                          Grid.Column="3"
                           MinWidth="150"
                           SelectionChanged="DisplayModeComboBox_SelectionChanged" />
-                <TextBlock Grid.Column="6"
-                           Text="ADC bits"
-                           VerticalAlignment="Center" />
-                <TextBox x:Name="AdcBitsTextBox"
-                         Grid.Column="7"
-                         Text="10"
-                         LostFocus="AdcConfigurationTextBox_LostFocus" />
-                <TextBlock Grid.Column="8"
+                <TextBlock Grid.Column="4"
                            Text="Reference V"
                            VerticalAlignment="Center" />
                 <TextBox x:Name="ReferenceVoltageTextBox"
-                         Grid.Column="9"
+                         Grid.Column="5"
                          Text="5.0"
                          LostFocus="AdcConfigurationTextBox_LostFocus" />
             </Grid>
 
             <Grid Grid.Row="1"
+                  ColumnDefinitions="Auto,70,Auto,80,Auto,90,Auto,Auto,*"
+                  ColumnSpacing="8"
+                  VerticalAlignment="Center">
+                <TextBlock Grid.Column="0"
+                           Text="Channels"
+                           VerticalAlignment="Center" />
+                <ComboBox x:Name="ChannelCountComboBox"
+                          Grid.Column="1"
+                          MinWidth="70"
+                          SelectionChanged="ChannelCountComboBox_SelectionChanged" />
+                <TextBlock Grid.Column="2"
+                           Text="ADC bits"
+                           VerticalAlignment="Center" />
+                <TextBox x:Name="AdcBitsTextBox"
+                         Grid.Column="3"
+                         Text="14"
+                         LostFocus="AdcConfigurationTextBox_LostFocus" />
+                <TextBlock Grid.Column="4"
+                           Text="Sample Hz"
+                           VerticalAlignment="Center" />
+                <TextBox x:Name="SampleRateHzTextBox"
+                         Grid.Column="5"
+                         Text="250" />
+                <Button x:Name="ApplyDeviceSettingsButton"
+                        Grid.Column="6"
+                        Content="Apply Device Settings"
+                        Click="ApplyDeviceSettingsButton_Click" />
+                <Button x:Name="CheckArduinoCliButton"
+                        Grid.Column="7"
+                        Content="Check Arduino CLI"
+                        Click="CheckArduinoCliButton_Click" />
+            </Grid>
+
+            <Grid Grid.Row="2"
                   ColumnDefinitions="*,*,*"
                   ColumnSpacing="10"
                   VerticalAlignment="Center">
@@ -141,7 +161,7 @@
                 </StackPanel>
             </Grid>
 
-            <Grid Grid.Row="2"
+            <Grid Grid.Row="3"
                   ColumnDefinitions="*,*,*"
                   ColumnSpacing="10"
                   VerticalAlignment="Center">
@@ -227,11 +247,16 @@
                        VerticalAlignment="Center" />
         </Grid>
 
+        <TextBlock x:Name="DeviceResponseText"
+                   Grid.Row="4"
+                   Text="Device response: none"
+                   TextWrapping="Wrap" />
+
         <scottPlot:AvaPlot x:Name="SignalPlot"
-                           Grid.Row="4" />
+                           Grid.Row="5" />
 
         <TextBlock x:Name="StatusText"
-                   Grid.Row="5"
+                   Grid.Row="6"
                    Text="Ready."
                    TextWrapping="Wrap" />
     </Grid>

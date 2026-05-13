@@ -1,11 +1,12 @@
 using System.Globalization;
+using BiomedicalSignalPlotter.Arduino;
 using BiomedicalSignalPlotter.Models;
 
 namespace BiomedicalSignalPlotter.Configuration;
 
 public static class SignalConfigurationService
 {
-    public const int DefaultAdcBits = 10;
+    public const int DefaultAdcBits = ArduinoDeviceSettingsLimits.DefaultAdcBits;
     public const double DefaultReferenceVoltage = 5.0;
     public const double DefaultPlotWindowSeconds = 10.0;
 
@@ -129,7 +130,7 @@ public static class SignalConfigurationService
     {
         return configuration with
         {
-            AdcBits = Math.Clamp(adcBits, 1, 32),
+            AdcBits = ArduinoDeviceSettingsLimits.ClampAdcBits(adcBits),
             ReferenceVoltage = referenceVoltage > 0 ? referenceVoltage : configuration.ReferenceVoltage
         };
     }

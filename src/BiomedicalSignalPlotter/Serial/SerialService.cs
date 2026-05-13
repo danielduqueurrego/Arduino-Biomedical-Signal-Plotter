@@ -16,6 +16,7 @@ public sealed class SerialService : ISerialService
 
     public event EventHandler<SignalSample>? SampleReceived;
     public event EventHandler<string>? StatusChanged;
+    public event EventHandler<string>? MetadataReceived;
 
     public bool IsConnected { get; private set; }
 
@@ -84,6 +85,30 @@ public sealed class SerialService : ISerialService
         StatusChanged?.Invoke(this, $"Connected to {portName} at {baudRate} baud.");
     }
 
+    public Task SendLineAsync(string line, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(line);
+
+        SerialPort serialPort;
+        lock (_syncRoot)
+        {
+            if (!IsConnected || _serialPort is null)
+            {
+                throw new InvalidOperationException("Connect to Arduino before applying device settings.");
+            }
+
+            serialPort = _serialPort;
+        }
+
+        return Task.Run(
+            () =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                serialPort.WriteLine(line);
+            },
+            cancellationToken);
+    }
+
     public async Task DisconnectAsync()
     {
         SerialPort? serialPort;
@@ -148,18 +173,37 @@ public sealed class SerialService : ISerialService
 
     private void ReadLoop(SerialPort serialPort, CancellationToken cancellationToken)
     {
+        int rejectedDataLineCount = 0;
+
         while (!cancellationToken.IsCancellationRequested)
         {
             try
             {
                 string line = serialPort.ReadLine();
+                if (SerialLineParser.IsCommentOrMetadataLine(line))
+                {
+                    MetadataReceived?.Invoke(this, line.Trim());
+                    continue;
+                }
+
                 if (_parser.TryParse(line, ExpectedChannelCount, out SerialChannelValues? values))
                 {
+                    rejectedDataLineCount = 0;
                     SignalSample sample = new(
                         _stopwatch.Elapsed.TotalSeconds,
                         values.Values);
 
                     SampleReceived?.Invoke(this, sample);
+                }
+                else
+                {
+                    rejectedDataLineCount++;
+                    if (rejectedDataLineCount % 100 == 0)
+                    {
+                        StatusChanged?.Invoke(
+                            this,
+                            $"Ignored {rejectedDataLineCount} serial data rows. Check channel count and firmware settings.");
+                    }
                 }
             }
             catch (TimeoutException)

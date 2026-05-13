@@ -30,7 +30,7 @@ public class SignalConfigurationServiceTests
         Assert.Equal("Channel 1", configuration.Channel1.Label);
         Assert.Equal("ADC counts", configuration.Channel0.Unit);
         Assert.Equal("ADC counts", configuration.Channel1.Unit);
-        Assert.Equal(10, configuration.AdcBits);
+        Assert.Equal(14, configuration.AdcBits);
         Assert.Equal(5.0, configuration.ReferenceVoltage);
         Assert.Equal(SignalDisplayMode.RawAdcCounts, configuration.DisplayMode);
     }

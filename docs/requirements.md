@@ -26,6 +26,8 @@ The first version should prove that the app can:
 
 8\. Avoid crashing on malformed serial input.
 
+9\. Configure Arduino channel count, ADC bits, sample rate, and streaming state over serial commands.
+
 
 
 \## Not included in Version 0.1
