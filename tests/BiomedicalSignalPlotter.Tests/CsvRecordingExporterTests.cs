@@ -12,14 +12,14 @@ public class CsvRecordingExporterTests
         RecordedSample[] samples =
         [
             new(0.0, [512.0, 310.0], RecordedSampleSource.Serial),
-            new(0.004, [0.52, 0.31], RecordedSampleSource.Simulated)
+            new(0.004, [514.0, 311.0], RecordedSampleSource.Serial)
         ];
 
         string[] lines = SplitLines(CsvRecordingExporter.FormatCsv(samples));
 
         Assert.Equal("time_s,channel_0,channel_1,source", lines[0]);
         Assert.Equal("0.000,512,310,serial", lines[1]);
-        Assert.Equal("0.004,0.52,0.31,simulated", lines[2]);
+        Assert.Equal("0.004,514,311,serial", lines[2]);
     }
 
     [Theory]
@@ -56,10 +56,10 @@ public class CsvRecordingExporterTests
 
             string csv = CsvRecordingExporter.FormatCsv(
             [
-                new RecordedSample(1.25, [0.52, 0.31], RecordedSampleSource.Simulated)
+                new RecordedSample(1.25, [0.52, 0.31], RecordedSampleSource.Serial)
             ]);
 
-            Assert.Contains("1.250,0.52,0.31,simulated", csv);
+            Assert.Contains("1.250,0.52,0.31,serial", csv);
             Assert.DoesNotContain("1,250", csv);
         }
         finally

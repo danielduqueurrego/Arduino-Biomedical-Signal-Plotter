@@ -127,7 +127,6 @@ public static class CsvRecordingExporter
         return source switch
         {
             RecordedSampleSource.Serial => "serial",
-            RecordedSampleSource.Simulated => "simulated",
             _ => throw new ArgumentOutOfRangeException(nameof(source), source, "Unknown recorded sample source.")
         };
     }

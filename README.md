@@ -28,7 +28,7 @@ This app is designed for educational use in biomedical instrumentation laborator
 
 ## Development
 
-Version 0.1 proves the desktop app architecture with simulated data and the first Arduino numeric CSV serial pathway. The app supports 1 to 6 analog channels, with 2 channels as the default.
+Version 0.1 focuses on Arduino UNO R4 WiFi acquisition using numeric CSV serial data. The app supports 1 to 6 analog channels, with 2 channels as the default.
 
 Prerequisite:
 
@@ -70,7 +70,7 @@ dotnet test
 13. Click `Stop Recording`.
 14. Click `Save CSV`.
 
-Arduino CLI is required for firmware upload and setup, but it is not required for simulation mode or plotting from an already programmed Arduino. The supported board is Arduino UNO R4 WiFi. The supported channels are `A0` through `A5`, channel count is 1 to 6, ADC bits are 8 to 14, sample rate is 1 to 1000 Hz, plot count is 1 to 3, and each subplot supports up to 5 horizontal reference bars.
+Arduino CLI is required for firmware upload and setup, but it is not required for plotting from an already programmed Arduino. The supported board is Arduino UNO R4 WiFi. The supported channels are `A0` through `A5`, channel count is 1 to 6, ADC bits are 8 to 14, sample rate is 1 to 1000 Hz, plot count is 1 to 3, and each subplot supports up to 5 horizontal reference bars.
 
 Signal and device settings should not be changed during recording. Plot display settings and reference bars affect visualization only, not recorded raw data. Reference voltage is used for app-side voltage conversion, not hardware ADC reference configuration.
 
@@ -91,7 +91,7 @@ Signal and device settings should not be changed during recording. Plot display 
 
 ## Display Settings
 
-Click `Signal Settings` to open the detailed signal/channel configuration. The main window keeps only connection, simulation, recording, device, and firmware actions visible so more space is available for plotting.
+Click `Signal Settings` to open the detailed signal/channel configuration. The main window keeps only connection, recording, device, and firmware actions visible so more space is available for plotting.
 
 The app includes lightweight display presets so the same Arduino stream can be used in different lab activities:
 
@@ -152,9 +152,9 @@ Choose the channel count in `Signal Settings` before starting a recording. If re
 
 ## Recording Data
 
-The app can record samples from either simulated mode or a connected serial device.
+The app records samples from a connected Arduino serial device.
 
-1. Click `Start Recording` while simulated data or serial data is running.
+1. Click `Start Recording` after the Arduino is connected and streaming data.
 2. Click `Stop Recording` to pause capture.
 3. Click `Save CSV` to export the recorded samples.
 4. Click `Clear Recording` to discard the current recording.
@@ -183,13 +183,6 @@ time_s,channel_0,channel_1,source
 ```
 
 Recorded channel values remain the captured source values even if the plot is displayed as voltage. The display configuration is included as `#` metadata above the CSV header.
-
-For simulated samples, the `source` column is `simulated`:
-
-```text
-time_s,channel_0,channel_1,source
-0.000,0.52,0.31,simulated
-```
 
 For one active channel, the header is `time_s,channel_0,source`. For six active channels, the header is `time_s,channel_0,channel_1,channel_2,channel_3,channel_4,channel_5,source`.
 
@@ -232,7 +225,7 @@ Firmware responses also begin with `#`, so they are ignored as data:
 
 The Arduino sketch is in `firmware/arduino/TwoChannelCsvStreamer/`. It targets the Arduino UNO R4 WiFi, reads a runtime configured contiguous channel range from `A0` through `A5`, and streams raw ADC values at 250 Hz by default. The default firmware channel count is 2 (`A0,A1`) to preserve current behavior. The default ADC resolution is 14 bits.
 
-Arduino CLI is required for students who need to upload or update firmware through this workflow. Arduino CLI is not required for simulation mode, CSV export, or plotting from an already programmed board.
+Arduino CLI is required for students who need to upload or update firmware through this workflow. Arduino CLI is not required for CSV export or plotting from an already programmed board.
 
 In the app, click `Check Arduino CLI` to run:
 

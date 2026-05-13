@@ -14,7 +14,7 @@ The first version should prove that the app can:
 
 2\. Show a clean main window.
 
-3\. Plot 1 to 6 channels of simulated real-time data.
+3\. Plot 1 to 6 channels of real Arduino serial data.
 
 4\. Read 1 to 6 channels of numeric CSV data from a serial port.
 

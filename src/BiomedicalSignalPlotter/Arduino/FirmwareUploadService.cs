@@ -47,7 +47,7 @@ public sealed class FirmwareUploadService
         {
             return new FirmwareUploadResult(
                 false,
-                "Arduino CLI not found. Arduino CLI is required for firmware upload, but not for simulation or plotting from an already programmed board.");
+                "Arduino CLI not found. Arduino CLI is required for firmware upload, but not for plotting from an already programmed board.");
         }
         catch (TimeoutException ex)
         {

@@ -28,7 +28,7 @@ public class ArduinoCliServiceTests
         ArduinoCliCheckResult result = await service.CheckAvailabilityAsync();
 
         Assert.False(result.IsAvailable);
-        Assert.Contains("not for simulation", result.Message);
+        Assert.Contains("not for plotting", result.Message);
     }
 
     [Fact]

@@ -48,7 +48,7 @@ public sealed class ArduinoCliService
         {
             return new ArduinoCliCheckResult(
                 false,
-                "Arduino CLI is required for firmware upload/setup, but not for simulation or plotting from an already programmed board.",
+                "Arduino CLI is required for firmware upload/setup, but not for plotting from an already programmed board.",
                 null);
         }
         catch (TimeoutException ex)

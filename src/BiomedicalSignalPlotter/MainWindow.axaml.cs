@@ -16,7 +16,6 @@ public partial class MainWindow : Window
 {
     private const int BufferCapacity = 2_000;
     private readonly CircularSignalBuffer _signalBuffer = new(BufferCapacity);
-    private readonly SimulatedDataService _simulatedDataService = new();
     private readonly ISerialService _serialService = new SerialService();
     private readonly RecordingService _recordingService = new();
     private readonly ArduinoCliService _arduinoCliService = new();
@@ -26,7 +25,7 @@ public partial class MainWindow : Window
     private IReadOnlyList<SerialPortDisplayInfo> _serialPortDisplayInfos = [];
     private SignalConfiguration _signalConfiguration = SignalConfigurationService.CreateDefault();
     private int _deviceSampleRateHz = ArduinoDeviceSettingsLimits.DefaultSampleRateHz;
-    private string _plotTitle = "Simulated data";
+    private string _plotTitle = "Arduino data";
     private bool _isSavingRecording;
     private bool _isUploadingFirmware;
     private bool _isApplyingDeviceSettings;
@@ -41,7 +40,6 @@ public partial class MainWindow : Window
         ApplyActiveChannelCount(clearBuffer: false);
         ConfigurePlots();
         RefreshPlots();
-        _simulatedDataService.SampleGenerated += SimulatedDataService_SampleGenerated;
         _serialService.SampleReceived += SerialService_SampleReceived;
         _serialService.StatusChanged += SerialService_StatusChanged;
         _serialService.MetadataReceived += SerialService_MetadataReceived;
@@ -53,8 +51,8 @@ public partial class MainWindow : Window
         };
         _plotRefreshTimer.Tick += PlotRefreshTimer_Tick;
         _plotRefreshTimer.Start();
-        StartSimulation();
         UpdateWorkflowUi();
+        StatusText.Text = "Connect to an Arduino UNO R4 WiFi to begin plotting.";
 
         Closed += MainWindow_Closed;
     }
@@ -80,12 +78,6 @@ public partial class MainWindow : Window
         plot.Plot.XLabel("Time (s)");
         plot.Plot.YLabel(GetYAxisLabel(plotIndex));
         plot.Plot.ShowLegend();
-    }
-
-    private void SimulatedDataService_SampleGenerated(object? sender, SignalSample sample)
-    {
-        _signalBuffer.Add(sample);
-        _recordingService.Record(sample, RecordedSampleSource.Simulated, _signalConfiguration.ChannelCount);
     }
 
     private void SerialService_SampleReceived(object? sender, SignalSample sample)
@@ -333,40 +325,6 @@ public partial class MainWindow : Window
         _ = ToggleSerialConnectionAsync();
     }
 
-    private async void SimulationButton_Click(object? sender, RoutedEventArgs e)
-    {
-        if (_simulatedDataService.IsRunning)
-        {
-            await StopSimulationAsync();
-            return;
-        }
-
-        if (_serialService.IsConnected)
-        {
-            await DisconnectSerialAsync();
-        }
-
-        StartSimulation();
-    }
-
-    private void StartSimulation()
-    {
-        ApplyActiveChannelCount(clearBuffer: true);
-        _plotTitle = "Simulated data";
-        _simulatedDataService.Start();
-        SimulationButton.Content = "Stop Simulation";
-        StatusText.Text = $"Simulation running with {_signalConfiguration.ChannelCount} channel(s) at 200 Hz. Plot refreshes at approximately 30 Hz.";
-        UpdateWorkflowUi();
-    }
-
-    private async Task StopSimulationAsync()
-    {
-        await _simulatedDataService.StopAsync();
-        SimulationButton.Content = "Start Simulation";
-        StatusText.Text = $"Simulation stopped. Buffer holds {_signalBuffer.Count} samples.";
-        UpdateWorkflowUi();
-    }
-
     private async void RefreshPortsButton_Click(object? sender, RoutedEventArgs e)
     {
         await RefreshSerialPortsAsync(updateStatus: true);
@@ -421,17 +379,11 @@ public partial class MainWindow : Window
 
         try
         {
-            if (_simulatedDataService.IsRunning)
-            {
-                await StopSimulationAsync();
-            }
-
             ApplyActiveChannelCount(clearBuffer: true);
             _plotTitle = "Serial data";
             _serialService.Connect(portName);
             SelectSerialPort(portName);
             ConnectButton.Content = "Disconnect";
-            SimulationButton.Content = "Start Simulation";
             UpdateWorkflowUi();
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
@@ -445,6 +397,12 @@ public partial class MainWindow : Window
     private async Task DisconnectSerialAsync()
     {
         await _serialService.DisconnectAsync();
+        if (_recordingService.IsRecording)
+        {
+            _recordingService.Stop();
+            RecordingStatusText.Text = "Recording stopped because serial disconnected";
+        }
+
         ConnectButton.Content = "Connect";
         UpdateWorkflowUi();
     }
@@ -472,6 +430,13 @@ public partial class MainWindow : Window
 
     private void StartRecordingButton_Click(object? sender, RoutedEventArgs e)
     {
+        if (!_serialService.IsConnected)
+        {
+            RecordingStatusText.Text = "Connect to Arduino before recording";
+            StatusText.Text = "Connect to an Arduino UNO R4 WiFi before starting a recording.";
+            return;
+        }
+
         if (_isSavingRecording)
         {
             RecordingStatusText.Text = "Wait for save to finish before recording";
@@ -780,7 +745,6 @@ public partial class MainWindow : Window
             _plotTitle = "Serial data";
             _serialService.Connect(portName);
             ConnectButton.Content = "Disconnect";
-            SimulationButton.Content = "Start Simulation";
             StatusText.Text = string.IsNullOrWhiteSpace(selectionMessage)
                 ? $"Upload succeeded and reconnected to {portName}."
                 : $"Upload succeeded and reconnected to {portName}. {selectionMessage}";
@@ -802,7 +766,7 @@ public partial class MainWindow : Window
         bool canEditDeviceSettings = !isRecording && !isBusy;
 
         RecordedSampleCountText.Text = count == 1 ? "1 sample" : $"{count} samples";
-        StartRecordingButton.IsEnabled = !isRecording && !_isSavingRecording && !_isUploadingFirmware;
+        StartRecordingButton.IsEnabled = _serialService.IsConnected && !isRecording && !isBusy;
         StopRecordingButton.IsEnabled = isRecording;
         SaveRecordingButton.IsEnabled = hasRecordedSamples && !isRecording && !_isSavingRecording;
         ClearRecordingButton.IsEnabled = hasRecordedSamples && !isRecording && !_isSavingRecording;
@@ -810,7 +774,6 @@ public partial class MainWindow : Window
         SerialPortComboBox.IsEnabled = !_serialService.IsConnected && !_isUploadingFirmware;
         RefreshPortsButton.IsEnabled = !_serialService.IsConnected && !_isUploadingFirmware;
         ConnectButton.IsEnabled = !_isUploadingFirmware;
-        SimulationButton.IsEnabled = !_isUploadingFirmware;
 
         SignalSettingsButton.IsEnabled = canEditMetadata;
         PlotDisplaySettingsButton.IsEnabled = !_isSavingRecording && !_isUploadingFirmware;
@@ -823,7 +786,6 @@ public partial class MainWindow : Window
 
     private void ApplyActiveChannelCount(bool clearBuffer)
     {
-        _simulatedDataService.SetChannelCount(_signalConfiguration.ChannelCount);
         _serialService.ExpectedChannelCount = _signalConfiguration.ChannelCount;
 
         if (clearBuffer)
@@ -856,7 +818,6 @@ public partial class MainWindow : Window
     {
         _plotRefreshTimer.Stop();
         await _serialService.DisposeAsync();
-        await _simulatedDataService.StopAsync();
     }
 
 }

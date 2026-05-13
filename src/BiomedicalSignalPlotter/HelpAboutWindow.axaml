@@ -58,7 +58,7 @@ Supported reference bars: up to 5 horizontal reference bars per subplot." />
                            FontSize="16"
                            FontWeight="SemiBold" />
                 <TextBlock TextWrapping="Wrap"
-                           Text="Arduino CLI is required for firmware upload and setup, but not for simulation mode or plotting from an already programmed board.
+                           Text="Arduino CLI is required for firmware upload and setup, but not for plotting from an already programmed board.
 Signal Settings controls channel labels, units, signal mode, channel count, ADC bits, reference voltage, and display mode.
 Apply Device Settings sends channel count, ADC bits, and sample rate to the connected Arduino firmware.
 Plot Display controls plot routing, time window, Y-axis ranges, and horizontal reference bars.
