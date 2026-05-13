@@ -78,7 +78,7 @@ Signal and device settings should not be changed during recording. Plot display 
 
 - `Check Arduino CLI`: verifies that `arduino-cli` is installed and available on `PATH`.
 - `Upload Firmware`: detects one connected UNO R4 WiFi, compiles the firmware, uploads it, and reconnects if the app was connected before upload.
-- `Refresh Ports`: refreshes the serial port list.
+- `Refresh Ports`: refreshes the serial port list. When Arduino CLI is available, the dropdown may include detected board names, such as `COM5 — Arduino UNO R4 WiFi`; the app still connects using the raw port name.
 - `Connect`: opens or closes the selected serial connection.
 - `Signal Settings`: configures signal mode, active channel count, channel labels and units, ADC bits, reference voltage, display mode, and channel routing.
 - `Apply Device Settings`: sends channel count, ADC bits, and sample rate to the connected Arduino firmware.

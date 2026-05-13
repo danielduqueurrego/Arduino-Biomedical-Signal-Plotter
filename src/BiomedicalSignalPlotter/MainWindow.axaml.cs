@@ -23,6 +23,7 @@ public partial class MainWindow : Window
     private readonly FirmwareUploadService _firmwareUploadService = new();
     private readonly DispatcherTimer _plotRefreshTimer;
     private AvaPlot[] _plots = [];
+    private IReadOnlyList<SerialPortDisplayInfo> _serialPortDisplayInfos = [];
     private SignalConfiguration _signalConfiguration = SignalConfigurationService.CreateDefault();
     private int _deviceSampleRateHz = ArduinoDeviceSettingsLimits.DefaultSampleRateHz;
     private string _plotTitle = "Simulated data";
@@ -44,7 +45,7 @@ public partial class MainWindow : Window
         _serialService.SampleReceived += SerialService_SampleReceived;
         _serialService.StatusChanged += SerialService_StatusChanged;
         _serialService.MetadataReceived += SerialService_MetadataReceived;
-        RefreshSerialPorts(updateStatus: false);
+        _ = RefreshSerialPortsAsync(updateStatus: false);
 
         _plotRefreshTimer = new DispatcherTimer
         {
@@ -366,23 +367,41 @@ public partial class MainWindow : Window
         UpdateWorkflowUi();
     }
 
-    private void RefreshPortsButton_Click(object? sender, RoutedEventArgs e)
+    private async void RefreshPortsButton_Click(object? sender, RoutedEventArgs e)
     {
-        RefreshSerialPorts(updateStatus: true);
+        await RefreshSerialPortsAsync(updateStatus: true);
     }
 
-    private void RefreshSerialPorts(bool updateStatus)
+    private async Task<SerialPortSelectionResult> RefreshSerialPortsAsync(
+        bool updateStatus,
+        string? preferredPortName = null,
+        string? fallbackPortName = null)
     {
+        string? portToPreserve = preferredPortName ?? GetSelectedSerialPortName() ?? _serialService.PortName;
         string[] ports = _serialService.GetAvailablePorts();
-        SerialPortComboBox.ItemsSource = ports;
-        SerialPortComboBox.SelectedIndex = ports.Length > 0 ? 0 : -1;
+        IReadOnlyList<ArduinoBoardInfo> boards = await _arduinoCliService.ListBoardsAsync();
+        IReadOnlyList<SerialPortDisplayInfo> displayInfos = SerialPortSelectionService.CreateDisplayPorts(ports, boards);
+        SerialPortSelectionResult selection = SerialPortSelectionService.ChoosePort(
+            displayInfos,
+            portToPreserve,
+            fallbackPortName);
+
+        _serialPortDisplayInfos = displayInfos;
+        SerialPortComboBox.ItemsSource = displayInfos;
+        SerialPortComboBox.SelectedItem = selection.SelectedPort;
+        if (selection.SelectedPort is null)
+        {
+            SerialPortComboBox.SelectedIndex = -1;
+        }
 
         if (updateStatus)
         {
-            StatusText.Text = ports.Length == 0
-                ? "No serial ports found."
-                : $"Found {ports.Length} serial port(s): {string.Join(", ", ports)}.";
+            StatusText.Text = !string.IsNullOrWhiteSpace(selection.Message)
+                ? selection.Message
+                : $"Found {displayInfos.Count} serial port(s): {string.Join(", ", displayInfos.Select(port => port.DisplayName))}.";
         }
+
+        return selection;
     }
 
     private async Task ToggleSerialConnectionAsync()
@@ -393,7 +412,8 @@ public partial class MainWindow : Window
             return;
         }
 
-        if (SerialPortComboBox.SelectedItem is not string portName || string.IsNullOrWhiteSpace(portName))
+        string? portName = GetSelectedSerialPortName();
+        if (string.IsNullOrWhiteSpace(portName))
         {
             StatusText.Text = "Select a serial port before connecting.";
             return;
@@ -409,7 +429,7 @@ public partial class MainWindow : Window
             ApplyActiveChannelCount(clearBuffer: true);
             _plotTitle = "Serial data";
             _serialService.Connect(portName);
-            SerialPortComboBox.SelectedItem = portName;
+            SelectSerialPort(portName);
             ConnectButton.Content = "Disconnect";
             SimulationButton.Content = "Start Simulation";
             UpdateWorkflowUi();
@@ -427,6 +447,27 @@ public partial class MainWindow : Window
         await _serialService.DisconnectAsync();
         ConnectButton.Content = "Connect";
         UpdateWorkflowUi();
+    }
+
+    private string? GetSelectedSerialPortName()
+    {
+        return SerialPortComboBox.SelectedItem switch
+        {
+            SerialPortDisplayInfo portInfo => portInfo.PortName,
+            string portName => portName,
+            _ => null
+        };
+    }
+
+    private void SelectSerialPort(string portName)
+    {
+        SerialPortDisplayInfo? portInfo = _serialPortDisplayInfos.FirstOrDefault(
+            port => string.Equals(port.PortName, portName, StringComparison.OrdinalIgnoreCase));
+
+        if (portInfo is not null)
+        {
+            SerialPortComboBox.SelectedItem = portInfo;
+        }
     }
 
     private void StartRecordingButton_Click(object? sender, RoutedEventArgs e)
@@ -680,7 +721,7 @@ public partial class MainWindow : Window
         try
         {
             bool reconnectAfterUpload = _serialService.IsConnected;
-            string? previousPortName = _serialService.PortName;
+            string? previousPortName = _serialService.PortName ?? GetSelectedSerialPortName();
 
             if (_serialService.IsConnected)
             {
@@ -694,14 +735,27 @@ public partial class MainWindow : Window
 
             if (result.Succeeded)
             {
-                RefreshSerialPorts(updateStatus: false);
+                SerialPortSelectionResult selection = await RefreshSerialPortsAsync(
+                    updateStatus: false,
+                    preferredPortName: previousPortName,
+                    fallbackPortName: result.PortName);
+
                 if (reconnectAfterUpload)
                 {
-                    string reconnectPort = result.PortName ?? previousPortName ?? string.Empty;
-                    if (!string.IsNullOrWhiteSpace(reconnectPort))
+                    if (selection.SelectedPort is not null)
                     {
-                        await TryReconnectAfterFirmwareUploadAsync(reconnectPort);
+                        await TryReconnectAfterFirmwareUploadAsync(
+                            selection.SelectedPort.PortName,
+                            selection.Message);
                     }
+                    else
+                    {
+                        StatusText.Text = $"Upload succeeded, but no serial port was selected for reconnect. {selection.Message ?? "Refresh ports and connect manually."}";
+                    }
+                }
+                else if (!string.IsNullOrWhiteSpace(selection.Message))
+                {
+                    StatusText.Text = $"Upload succeeded. {selection.Message}";
                 }
             }
         }
@@ -716,7 +770,7 @@ public partial class MainWindow : Window
         }
     }
 
-    private async Task TryReconnectAfterFirmwareUploadAsync(string portName)
+    private async Task TryReconnectAfterFirmwareUploadAsync(string portName, string? selectionMessage)
     {
         await Task.Delay(TimeSpan.FromMilliseconds(750));
 
@@ -727,7 +781,9 @@ public partial class MainWindow : Window
             _serialService.Connect(portName);
             ConnectButton.Content = "Disconnect";
             SimulationButton.Content = "Start Simulation";
-            StatusText.Text = $"Upload succeeded and reconnected to {portName}.";
+            StatusText.Text = string.IsNullOrWhiteSpace(selectionMessage)
+                ? $"Upload succeeded and reconnected to {portName}."
+                : $"Upload succeeded and reconnected to {portName}. {selectionMessage}";
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
         {
