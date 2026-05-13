@@ -2,19 +2,19 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        mc:Ignorable="d" d:DesignWidth="760" d:DesignHeight="620"
+        mc:Ignorable="d" d:DesignWidth="860" d:DesignHeight="620"
         x:Class="BiomedicalSignalPlotter.SignalSettingsWindow"
         Title="Signal Settings"
-        Width="760"
+        Width="860"
         Height="620"
-        MinWidth="700"
+        MinWidth="780"
         MinHeight="560"
         WindowStartupLocation="CenterOwner">
     <Grid RowDefinitions="Auto,Auto,*,Auto"
           RowSpacing="14"
           Margin="16">
         <Grid Grid.Row="0"
-              ColumnDefinitions="Auto,220,Auto,160,*"
+              ColumnDefinitions="Auto,220,Auto,160,Auto,70,*"
               ColumnSpacing="10"
               VerticalAlignment="Center">
             <TextBlock Grid.Column="0"
@@ -31,6 +31,13 @@
                       Grid.Column="3"
                       MinWidth="160"
                       SelectionChanged="DisplayModeComboBox_SelectionChanged" />
+            <TextBlock Grid.Column="4"
+                       Text="Plots"
+                       VerticalAlignment="Center" />
+            <ComboBox x:Name="PlotCountComboBox"
+                      Grid.Column="5"
+                      MinWidth="70"
+                      SelectionChanged="PlotCountComboBox_SelectionChanged" />
         </Grid>
 
         <Grid Grid.Row="1"
@@ -64,7 +71,7 @@
         <ScrollViewer Grid.Row="2"
                       VerticalScrollBarVisibility="Auto">
             <StackPanel Spacing="8">
-                <Grid ColumnDefinitions="70,*,120"
+                <Grid ColumnDefinitions="70,*,120,120"
                       ColumnSpacing="10">
                     <TextBlock Grid.Column="0"
                                Text="Pin"
@@ -75,10 +82,13 @@
                     <TextBlock Grid.Column="2"
                                Text="Unit"
                                FontWeight="SemiBold" />
+                    <TextBlock Grid.Column="3"
+                               Text="Plot"
+                               FontWeight="SemiBold" />
                 </Grid>
 
                 <Grid x:Name="Channel0Panel"
-                      ColumnDefinitions="70,*,120"
+                      ColumnDefinitions="70,*,120,120"
                       ColumnSpacing="10">
                     <TextBlock Grid.Column="0"
                                Text="A0"
@@ -91,10 +101,13 @@
                              Grid.Column="2"
                              Watermark="Unit"
                              TextChanged="ChannelConfigurationTextBox_TextChanged" />
+                    <ComboBox x:Name="Channel0PlotComboBox"
+                              Grid.Column="3"
+                              SelectionChanged="ChannelPlotComboBox_SelectionChanged" />
                 </Grid>
 
                 <Grid x:Name="Channel1Panel"
-                      ColumnDefinitions="70,*,120"
+                      ColumnDefinitions="70,*,120,120"
                       ColumnSpacing="10">
                     <TextBlock Grid.Column="0"
                                Text="A1"
@@ -107,10 +120,13 @@
                              Grid.Column="2"
                              Watermark="Unit"
                              TextChanged="ChannelConfigurationTextBox_TextChanged" />
+                    <ComboBox x:Name="Channel1PlotComboBox"
+                              Grid.Column="3"
+                              SelectionChanged="ChannelPlotComboBox_SelectionChanged" />
                 </Grid>
 
                 <Grid x:Name="Channel2Panel"
-                      ColumnDefinitions="70,*,120"
+                      ColumnDefinitions="70,*,120,120"
                       ColumnSpacing="10">
                     <TextBlock Grid.Column="0"
                                Text="A2"
@@ -123,10 +139,13 @@
                              Grid.Column="2"
                              Watermark="Unit"
                              TextChanged="ChannelConfigurationTextBox_TextChanged" />
+                    <ComboBox x:Name="Channel2PlotComboBox"
+                              Grid.Column="3"
+                              SelectionChanged="ChannelPlotComboBox_SelectionChanged" />
                 </Grid>
 
                 <Grid x:Name="Channel3Panel"
-                      ColumnDefinitions="70,*,120"
+                      ColumnDefinitions="70,*,120,120"
                       ColumnSpacing="10">
                     <TextBlock Grid.Column="0"
                                Text="A3"
@@ -139,10 +158,13 @@
                              Grid.Column="2"
                              Watermark="Unit"
                              TextChanged="ChannelConfigurationTextBox_TextChanged" />
+                    <ComboBox x:Name="Channel3PlotComboBox"
+                              Grid.Column="3"
+                              SelectionChanged="ChannelPlotComboBox_SelectionChanged" />
                 </Grid>
 
                 <Grid x:Name="Channel4Panel"
-                      ColumnDefinitions="70,*,120"
+                      ColumnDefinitions="70,*,120,120"
                       ColumnSpacing="10">
                     <TextBlock Grid.Column="0"
                                Text="A4"
@@ -155,10 +177,13 @@
                              Grid.Column="2"
                              Watermark="Unit"
                              TextChanged="ChannelConfigurationTextBox_TextChanged" />
+                    <ComboBox x:Name="Channel4PlotComboBox"
+                              Grid.Column="3"
+                              SelectionChanged="ChannelPlotComboBox_SelectionChanged" />
                 </Grid>
 
                 <Grid x:Name="Channel5Panel"
-                      ColumnDefinitions="70,*,120"
+                      ColumnDefinitions="70,*,120,120"
                       ColumnSpacing="10">
                     <TextBlock Grid.Column="0"
                                Text="A5"
@@ -171,6 +196,9 @@
                              Grid.Column="2"
                              Watermark="Unit"
                              TextChanged="ChannelConfigurationTextBox_TextChanged" />
+                    <ComboBox x:Name="Channel5PlotComboBox"
+                              Grid.Column="3"
+                              SelectionChanged="ChannelPlotComboBox_SelectionChanged" />
                 </Grid>
             </StackPanel>
         </ScrollViewer>

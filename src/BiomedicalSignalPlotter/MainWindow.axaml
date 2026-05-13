@@ -97,8 +97,19 @@
                    Text="Device response: none"
                    TextWrapping="Wrap" />
 
-        <scottPlot:AvaPlot x:Name="SignalPlot"
-                           Grid.Row="4" />
+        <Grid x:Name="PlotGrid"
+              Grid.Row="4"
+              RowDefinitions="*,0,0"
+              RowSpacing="0">
+            <scottPlot:AvaPlot x:Name="SignalPlot1"
+                               Grid.Row="0" />
+            <scottPlot:AvaPlot x:Name="SignalPlot2"
+                               Grid.Row="1"
+                               IsVisible="False" />
+            <scottPlot:AvaPlot x:Name="SignalPlot3"
+                               Grid.Row="2"
+                               IsVisible="False" />
+        </Grid>
 
         <TextBlock x:Name="StatusText"
                    Grid.Row="5"

@@ -7,7 +7,8 @@ public sealed record SignalConfiguration(
     int AdcBits,
     double ReferenceVoltage,
     SignalDisplayMode DisplayMode,
-    double PlotWindowSeconds)
+    double PlotWindowSeconds,
+    PlotLayoutConfiguration PlotLayout)
 {
     public ChannelConfiguration Channel0 => Channels[0];
 

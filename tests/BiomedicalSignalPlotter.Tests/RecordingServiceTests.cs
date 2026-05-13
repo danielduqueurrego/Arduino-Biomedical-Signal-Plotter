@@ -1,4 +1,5 @@
 using BiomedicalSignalPlotter.Models;
+using BiomedicalSignalPlotter.Configuration;
 using BiomedicalSignalPlotter.Recording;
 
 namespace BiomedicalSignalPlotter.Tests;
@@ -33,6 +34,22 @@ public class RecordingServiceTests
 
         RecordedSample recordedSample = Assert.Single(service.Snapshot());
         Assert.Equal(2, recordedSample.ChannelCount);
+        Assert.Equal([1.0, 2.0], recordedSample.Values);
+    }
+
+    [Fact]
+    public void Record_StoresActiveChannelsEvenWhenAChannelIsHiddenFromPlot()
+    {
+        SignalConfiguration configuration = SignalConfigurationService.ApplyChannelPlotAssignment(
+            SignalConfigurationService.CreateDefault(),
+            channelIndex: 1,
+            ChannelPlotAssignment.Hidden);
+        RecordingService service = new();
+
+        service.Start();
+        service.Record(new SignalSample(0.0, [1.0, 2.0]), RecordedSampleSource.Serial, configuration.ChannelCount);
+
+        RecordedSample recordedSample = Assert.Single(service.Snapshot());
         Assert.Equal([1.0, 2.0], recordedSample.Values);
     }
 }

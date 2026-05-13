@@ -8,6 +8,7 @@ using BiomedicalSignalPlotter.Models;
 using BiomedicalSignalPlotter.Recording;
 using BiomedicalSignalPlotter.Serial;
 using BiomedicalSignalPlotter.Services;
+using ScottPlot.Avalonia;
 
 namespace BiomedicalSignalPlotter;
 
@@ -21,6 +22,7 @@ public partial class MainWindow : Window
     private readonly ArduinoCliService _arduinoCliService = new();
     private readonly FirmwareUploadService _firmwareUploadService = new();
     private readonly DispatcherTimer _plotRefreshTimer;
+    private AvaPlot[] _plots = [];
     private SignalConfiguration _signalConfiguration = SignalConfigurationService.CreateDefault();
     private int _deviceSampleRateHz = ArduinoDeviceSettingsLimits.DefaultSampleRateHz;
     private string _plotTitle = "Simulated data";
@@ -34,9 +36,10 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
 
+        _plots = [SignalPlot1, SignalPlot2, SignalPlot3];
         ApplyActiveChannelCount(clearBuffer: false);
-        ConfigurePlot();
-        SignalPlot.Refresh();
+        ConfigurePlots();
+        RefreshPlots();
         _simulatedDataService.SampleGenerated += SimulatedDataService_SampleGenerated;
         _serialService.SampleReceived += SerialService_SampleReceived;
         _serialService.StatusChanged += SerialService_StatusChanged;
@@ -55,12 +58,27 @@ public partial class MainWindow : Window
         Closed += MainWindow_Closed;
     }
 
-    private void ConfigurePlot()
+    private void ConfigurePlots()
     {
-        SignalPlot.Plot.Title($"{_plotTitle} - {SignalConfigurationService.GetModeDisplayName(_signalConfiguration.Mode)}");
-        SignalPlot.Plot.XLabel("Time (s)");
-        SignalPlot.Plot.YLabel(GetYAxisLabel());
-        SignalPlot.Plot.ShowLegend();
+        ApplyPlotGridLayout();
+
+        for (int plotIndex = 0; plotIndex < _plots.Length; plotIndex++)
+        {
+            if (plotIndex >= _signalConfiguration.PlotLayout.PlotCount)
+            {
+                continue;
+            }
+
+            ConfigurePlot(_plots[plotIndex], plotIndex);
+        }
+    }
+
+    private void ConfigurePlot(AvaPlot plot, int plotIndex)
+    {
+        plot.Plot.Title(GetPlotTitle(plotIndex));
+        plot.Plot.XLabel("Time (s)");
+        plot.Plot.YLabel(GetYAxisLabel(plotIndex));
+        plot.Plot.ShowLegend();
     }
 
     private void SimulatedDataService_SampleGenerated(object? sender, SignalSample sample)
@@ -119,27 +137,33 @@ public partial class MainWindow : Window
         SignalSnapshot rawSnapshot = _signalBuffer.Snapshot(_signalConfiguration.ChannelCount);
         SignalSnapshot displayedSnapshot = CreateDisplayedSnapshot(rawSnapshot);
 
-        SignalPlot.Plot.Clear();
-        ConfigurePlot();
-
-        if (displayedSnapshot.Count > 1)
+        for (int plotIndex = 0; plotIndex < _signalConfiguration.PlotLayout.PlotCount; plotIndex++)
         {
-            for (int channelIndex = 0; channelIndex < displayedSnapshot.ChannelCount; channelIndex++)
-            {
-                var channelPlot = SignalPlot.Plot.Add.Scatter(
-                    displayedSnapshot.TimeSeconds,
-                    displayedSnapshot.Channels[channelIndex]);
+            AvaPlot plot = _plots[plotIndex];
+            plot.Plot.Clear();
+            ConfigurePlot(plot, plotIndex);
 
-                channelPlot.LegendText = FormatLegendText(
-                    _signalConfiguration.Channels[channelIndex].Label,
-                    channelIndex);
+            int[] visibleChannelIndices = GetVisibleChannelIndices(plotIndex).ToArray();
+            if (displayedSnapshot.Count > 1 && visibleChannelIndices.Length > 0)
+            {
+                foreach (int channelIndex in visibleChannelIndices)
+                {
+                    var channelPlot = plot.Plot.Add.Scatter(
+                        displayedSnapshot.TimeSeconds,
+                        displayedSnapshot.Channels[channelIndex]);
+
+                    channelPlot.LegendText = FormatLegendText(
+                        _signalConfiguration.Channels[channelIndex].Label,
+                        channelIndex);
+                }
+
+                plot.Plot.Axes.AutoScale();
+                ApplyPlotWindow(plot, displayedSnapshot);
             }
 
-            SignalPlot.Plot.Axes.AutoScale();
-            ApplyPlotWindow(displayedSnapshot);
+            plot.Refresh();
         }
 
-        SignalPlot.Refresh();
         UpdateWorkflowUi();
     }
 
@@ -167,24 +191,29 @@ public partial class MainWindow : Window
         return new SignalSnapshot(rawSnapshot.TimeSeconds, channels);
     }
 
-    private void ApplyPlotWindow(SignalSnapshot snapshot)
+    private void ApplyPlotWindow(AvaPlot plot, SignalSnapshot snapshot)
     {
         double lastTime = snapshot.TimeSeconds[^1];
         double firstVisibleTime = Math.Max(snapshot.TimeSeconds[0], lastTime - _signalConfiguration.PlotWindowSeconds);
-        SignalPlot.Plot.Axes.SetLimitsX(firstVisibleTime, lastTime);
+        plot.Plot.Axes.SetLimitsX(firstVisibleTime, lastTime);
     }
 
-    private string GetYAxisLabel()
+    private string GetYAxisLabel(int plotIndex)
     {
         if (_signalConfiguration.DisplayMode == SignalDisplayMode.Voltage)
         {
             return "Voltage (V)";
         }
 
-        string firstUnit = _signalConfiguration.Channels[0].Unit;
-        bool allUnitsMatch = _signalConfiguration.Channels
-            .Take(_signalConfiguration.ChannelCount)
-            .All(channel => channel.Unit == firstUnit);
+        int[] visibleChannelIndices = GetVisibleChannelIndices(plotIndex).ToArray();
+        if (visibleChannelIndices.Length == 0)
+        {
+            return "Value";
+        }
+
+        string firstUnit = _signalConfiguration.Channels[visibleChannelIndices[0]].Unit;
+        bool allUnitsMatch = visibleChannelIndices
+            .All(channelIndex => _signalConfiguration.Channels[channelIndex].Unit == firstUnit);
 
         return allUnitsMatch ? firstUnit : "Value";
     }
@@ -193,6 +222,57 @@ public partial class MainWindow : Window
     {
         string unit = SignalConfigurationService.GetDisplayUnit(_signalConfiguration, channelIndex);
         return string.IsNullOrWhiteSpace(unit) ? label : $"{label} ({unit})";
+    }
+
+    private string GetPlotTitle(int plotIndex)
+    {
+        string modeDisplayName = SignalConfigurationService.GetModeDisplayName(_signalConfiguration.Mode);
+
+        return _signalConfiguration.PlotLayout.PlotCount == 1
+            ? $"{_plotTitle} - {modeDisplayName}"
+            : $"{_plotTitle} - Plot {plotIndex + 1} - {modeDisplayName}";
+    }
+
+    private IEnumerable<int> GetVisibleChannelIndices(int plotIndex)
+    {
+        for (int channelIndex = 0; channelIndex < _signalConfiguration.ChannelCount; channelIndex++)
+        {
+            int? assignedPlotIndex = PlotLayoutConfigurationService.GetPlotIndex(
+                _signalConfiguration.PlotLayout.ChannelAssignments[channelIndex]);
+
+            if (assignedPlotIndex == plotIndex)
+            {
+                yield return channelIndex;
+            }
+        }
+    }
+
+    private void ApplyPlotGridLayout()
+    {
+        int plotCount = _signalConfiguration.PlotLayout.PlotCount;
+
+        PlotGrid.RowDefinitions.Clear();
+        for (int plotIndex = 0; plotIndex < _plots.Length; plotIndex++)
+        {
+            PlotGrid.RowDefinitions.Add(new RowDefinition
+            {
+                Height = plotIndex < plotCount
+                    ? new GridLength(1, GridUnitType.Star)
+                    : new GridLength(0)
+            });
+
+            _plots[plotIndex].IsVisible = plotIndex < plotCount;
+        }
+
+        PlotGrid.RowSpacing = plotCount > 1 ? 8 : 0;
+    }
+
+    private void RefreshPlots()
+    {
+        foreach (AvaPlot plot in _plots)
+        {
+            plot.Refresh();
+        }
     }
 
     private void ConnectButton_Click(object? sender, RoutedEventArgs e)
@@ -426,8 +506,8 @@ public partial class MainWindow : Window
         _signalConfiguration = result.Configuration;
         _deviceSampleRateHz = result.SampleRateHz;
         ApplyActiveChannelCount(clearBuffer: previousChannelCount != _signalConfiguration.ChannelCount);
-        ConfigurePlot();
-        SignalPlot.Refresh();
+        ConfigurePlots();
+        RefreshPlots();
         StatusText.Text = $"Signal settings updated: {_signalConfiguration.ChannelCount} channel(s), {_signalConfiguration.AdcBits}-bit ADC, {_deviceSampleRateHz} Hz device sample rate.";
         UpdateWorkflowUi();
     }

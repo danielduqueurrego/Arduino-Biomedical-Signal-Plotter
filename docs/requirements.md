@@ -34,6 +34,8 @@ The first version should prove that the app can:
 
 12\. Identify app channels by Arduino analog pin names A0 through A5 while preserving editable channel labels and units.
 
+13\. Show 1 to 3 vertically stacked plots and allow active channels to be routed to Plot 1, Plot 2, Plot 3, or Hidden.
+
 
 
 \## Not included in Version 0.1

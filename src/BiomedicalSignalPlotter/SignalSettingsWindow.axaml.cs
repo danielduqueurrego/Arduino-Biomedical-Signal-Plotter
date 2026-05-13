@@ -12,6 +12,9 @@ public partial class SignalSettingsWindow : Window
     private readonly int[] _channelCountOptions = Enumerable
         .Range(AnalogChannelLimits.Minimum, AnalogChannelLimits.Maximum)
         .ToArray();
+    private readonly int[] _plotCountOptions = Enumerable
+        .Range(PlotLayoutConfigurationService.MinimumPlotCount, PlotLayoutConfigurationService.MaximumPlotCount)
+        .ToArray();
     private readonly DisplayModeOption[] _displayModeOptions =
     [
         new(SignalDisplayMode.RawAdcCounts, "Raw ADC counts"),
@@ -20,6 +23,7 @@ public partial class SignalSettingsWindow : Window
     private readonly bool _isReadOnly;
     private TextBox[] _channelLabelTextBoxes = [];
     private TextBox[] _channelUnitTextBoxes = [];
+    private ComboBox[] _channelPlotComboBoxes = [];
     private Control[] _channelConfigurationPanels = [];
     private SignalConfiguration _configuration;
     private int _sampleRateHz;
@@ -34,7 +38,10 @@ public partial class SignalSettingsWindow : Window
     {
         _configuration = configuration with
         {
-            Channels = configuration.Channels.ToArray()
+            Channels = configuration.Channels.ToArray(),
+            PlotLayout = new PlotLayoutConfiguration(
+                configuration.PlotLayout.PlotCount,
+                configuration.PlotLayout.ChannelAssignments)
         };
         _sampleRateHz = sampleRateHz;
         _isReadOnly = isReadOnly;
@@ -65,6 +72,15 @@ public partial class SignalSettingsWindow : Window
             Channel4UnitTextBox,
             Channel5UnitTextBox
         ];
+        _channelPlotComboBoxes =
+        [
+            Channel0PlotComboBox,
+            Channel1PlotComboBox,
+            Channel2PlotComboBox,
+            Channel3PlotComboBox,
+            Channel4PlotComboBox,
+            Channel5PlotComboBox
+        ];
         _channelConfigurationPanels =
         [
             Channel0Panel,
@@ -77,6 +93,7 @@ public partial class SignalSettingsWindow : Window
 
         SignalModeComboBox.ItemsSource = SignalConfigurationService.AllPresets;
         ChannelCountComboBox.ItemsSource = _channelCountOptions;
+        PlotCountComboBox.ItemsSource = _plotCountOptions;
         DisplayModeComboBox.ItemsSource = _displayModeOptions;
         UpdateSettingsUi();
         ApplyReadOnlyState();
@@ -89,13 +106,19 @@ public partial class SignalSettingsWindow : Window
         {
             SignalModeComboBox.SelectedItem = SignalConfigurationService.GetPreset(_configuration.Mode);
             ChannelCountComboBox.SelectedItem = _configuration.ChannelCount;
+            PlotCountComboBox.SelectedItem = _configuration.PlotLayout.PlotCount;
             DisplayModeComboBox.SelectedItem = _displayModeOptions.Single(option => option.DisplayMode == _configuration.DisplayMode);
+            PlotAssignmentOption[] plotAssignmentOptions = CreatePlotAssignmentOptions(_configuration.PlotLayout.PlotCount);
 
             for (int i = 0; i < AnalogChannelLimits.Maximum; i++)
             {
                 _channelLabelTextBoxes[i].Text = _configuration.Channels[i].Label;
                 _channelUnitTextBoxes[i].Text = _configuration.Channels[i].Unit;
                 _channelConfigurationPanels[i].IsVisible = i < _configuration.ChannelCount;
+                _channelPlotComboBoxes[i].ItemsSource = plotAssignmentOptions;
+                _channelPlotComboBoxes[i].SelectedItem = plotAssignmentOptions.FirstOrDefault(
+                    option => option.Assignment == _configuration.PlotLayout.ChannelAssignments[i])
+                    ?? plotAssignmentOptions.Single(option => option.Assignment == ChannelPlotAssignment.Plot1);
             }
 
             AdcBitsTextBox.Text = _configuration.AdcBits.ToString(CultureInfo.InvariantCulture);
@@ -117,6 +140,7 @@ public partial class SignalSettingsWindow : Window
 
         SignalModeComboBox.IsEnabled = false;
         ChannelCountComboBox.IsEnabled = false;
+        PlotCountComboBox.IsEnabled = false;
         DisplayModeComboBox.IsEnabled = false;
         AdcBitsTextBox.IsReadOnly = true;
         SampleRateHzTextBox.IsReadOnly = true;
@@ -125,6 +149,11 @@ public partial class SignalSettingsWindow : Window
         foreach (TextBox textBox in _channelLabelTextBoxes.Concat(_channelUnitTextBoxes))
         {
             textBox.IsReadOnly = true;
+        }
+
+        foreach (ComboBox comboBox in _channelPlotComboBoxes)
+        {
+            comboBox.IsEnabled = false;
         }
 
         SettingsStatusText.Text = "Settings are read-only while recording or while recorded samples are present.";
@@ -137,9 +166,10 @@ public partial class SignalSettingsWindow : Window
             return;
         }
 
+        PlotLayoutConfiguration currentPlotLayout = _configuration.PlotLayout;
         _configuration = preset.Mode == SignalMode.Custom
             ? SignalConfigurationService.SwitchToCustomPreservingSettings(_configuration)
-            : SignalConfigurationService.ApplyPreset(preset.Mode);
+            : SignalConfigurationService.ApplyPreset(preset.Mode) with { PlotLayout = currentPlotLayout };
 
         UpdateSettingsUi();
     }
@@ -155,6 +185,17 @@ public partial class SignalSettingsWindow : Window
         UpdateSettingsUi();
     }
 
+    private void PlotCountComboBox_SelectionChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        if (_isUpdatingUi || _isReadOnly || PlotCountComboBox.SelectedItem is not int plotCount)
+        {
+            return;
+        }
+
+        _configuration = SignalConfigurationService.ApplyPlotCount(_configuration, plotCount);
+        UpdateSettingsUi();
+    }
+
     private void DisplayModeComboBox_SelectionChanged(object? sender, SelectionChangedEventArgs e)
     {
         if (_isUpdatingUi || _isReadOnly || DisplayModeComboBox.SelectedItem is not DisplayModeOption option)
@@ -163,6 +204,22 @@ public partial class SignalSettingsWindow : Window
         }
 
         _configuration = SignalConfigurationService.ApplyDisplayMode(_configuration, option.DisplayMode);
+    }
+
+    private void ChannelPlotComboBox_SelectionChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        if (_isUpdatingUi || _isReadOnly)
+        {
+            return;
+        }
+
+        _configuration = SignalConfigurationService.ApplyChannelPlotAssignments(
+            _configuration,
+            _channelPlotComboBoxes
+                .Select(comboBox => comboBox.SelectedItem is PlotAssignmentOption option
+                    ? option.Assignment
+                    : ChannelPlotAssignment.Plot1)
+                .ToArray());
     }
 
     private void ChannelConfigurationTextBox_TextChanged(object? sender, TextChangedEventArgs e)
@@ -236,6 +293,20 @@ public partial class SignalSettingsWindow : Window
     }
 
     private sealed record DisplayModeOption(SignalDisplayMode DisplayMode, string DisplayName)
+    {
+        public override string ToString() => DisplayName;
+    }
+
+    private static PlotAssignmentOption[] CreatePlotAssignmentOptions(int plotCount)
+    {
+        return PlotLayoutConfigurationService.GetAvailableAssignments(plotCount)
+            .Select(assignment => new PlotAssignmentOption(
+                assignment,
+                PlotLayoutConfigurationService.GetAssignmentDisplayName(assignment)))
+            .ToArray();
+    }
+
+    private sealed record PlotAssignmentOption(ChannelPlotAssignment Assignment, string DisplayName)
     {
         public override string ToString() => DisplayName;
     }

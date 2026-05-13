@@ -33,6 +33,7 @@ public class SignalConfigurationServiceTests
         Assert.Equal(14, configuration.AdcBits);
         Assert.Equal(5.0, configuration.ReferenceVoltage);
         Assert.Equal(SignalDisplayMode.RawAdcCounts, configuration.DisplayMode);
+        Assert.Equal(1, configuration.PlotLayout.PlotCount);
     }
 
     [Fact]
@@ -111,5 +112,21 @@ public class SignalConfigurationServiceTests
     {
         Assert.Throws<ArgumentOutOfRangeException>(() =>
             SignalConfigurationService.ApplyChannelCount(SignalConfigurationService.CreateDefault(), channelCount));
+    }
+
+    [Fact]
+    public void ApplyChannelPlotAssignment_UpdatesRoutingWithoutChangingChannelCount()
+    {
+        SignalConfiguration configuration = SignalConfigurationService.ApplyPlotCount(
+            SignalConfigurationService.CreateDefault(),
+            2);
+
+        SignalConfiguration updated = SignalConfigurationService.ApplyChannelPlotAssignment(
+            configuration,
+            channelIndex: 1,
+            ChannelPlotAssignment.Plot2);
+
+        Assert.Equal(2, updated.ChannelCount);
+        Assert.Equal(ChannelPlotAssignment.Plot2, updated.PlotLayout.ChannelAssignments[1]);
     }
 }

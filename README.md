@@ -73,8 +73,11 @@ Custom mode lets users edit:
 - active channel labels and units
 - reference voltage
 - display mode
+- plot layout and channel-to-plot routing
 
 Channels are mapped to Arduino analog pins `A0` through `A5`. The default editable labels are `A0`, `A1`, `A2`, `A3`, `A4`, and `A5`; presets may replace the visible label with lab-oriented text such as `ECG` or `EMG`, while CSV metadata still records the underlying Arduino pin mapping.
+
+The app can show 1 to 3 vertically stacked plots. In `Signal Settings`, choose the number of plots and assign each active analog channel to `Plot 1`, `Plot 2`, `Plot 3`, or `Hidden`. Only plot choices available for the selected plot count are shown. Hidden channels are not displayed, but they are still received and recorded if they are active in the selected channel count.
 
 If a preset is selected and a channel label or unit is edited manually, the app switches to Custom mode while preserving the edited text.
 

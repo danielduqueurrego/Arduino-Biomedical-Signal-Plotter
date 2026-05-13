@@ -200,7 +200,8 @@ public static class SignalConfigurationService
             DefaultAdcBits,
             DefaultReferenceVoltage,
             SignalDisplayMode.RawAdcCounts,
-            plotWindowSeconds);
+            plotWindowSeconds,
+            PlotLayoutConfigurationService.CreateDefault());
 
         return new SignalModePreset(mode, displayName, configuration);
     }
@@ -232,7 +233,40 @@ public static class SignalConfigurationService
         {
             Mode = mode ?? configuration.Mode,
             ChannelCount = channelCount ?? configuration.ChannelCount,
-            Channels = CopyChannels(configuration.Channels)
+            Channels = CopyChannels(configuration.Channels),
+            PlotLayout = CopyPlotLayout(configuration.PlotLayout)
+        };
+    }
+
+    public static SignalConfiguration ApplyPlotCount(SignalConfiguration configuration, int plotCount)
+    {
+        return configuration with
+        {
+            PlotLayout = PlotLayoutConfigurationService.ApplyPlotCount(configuration.PlotLayout, plotCount)
+        };
+    }
+
+    public static SignalConfiguration ApplyChannelPlotAssignment(
+        SignalConfiguration configuration,
+        int channelIndex,
+        ChannelPlotAssignment assignment)
+    {
+        return configuration with
+        {
+            PlotLayout = PlotLayoutConfigurationService.AssignChannel(
+                configuration.PlotLayout,
+                channelIndex,
+                assignment)
+        };
+    }
+
+    public static SignalConfiguration ApplyChannelPlotAssignments(
+        SignalConfiguration configuration,
+        IReadOnlyList<ChannelPlotAssignment> assignments)
+    {
+        return configuration with
+        {
+            PlotLayout = PlotLayoutConfigurationService.AssignChannels(configuration.PlotLayout, assignments)
         };
     }
 
@@ -248,6 +282,11 @@ public static class SignalConfigurationService
         }
 
         return copy;
+    }
+
+    private static PlotLayoutConfiguration CopyPlotLayout(PlotLayoutConfiguration plotLayout)
+    {
+        return new PlotLayoutConfiguration(plotLayout.PlotCount, plotLayout.ChannelAssignments);
     }
 
     private static string NormalizeText(string value)
