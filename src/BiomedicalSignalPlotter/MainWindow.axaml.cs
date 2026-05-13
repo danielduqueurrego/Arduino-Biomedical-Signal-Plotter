@@ -37,6 +37,11 @@ public partial class MainWindow : Window
     private int _deviceSampleRateHz = ArduinoDeviceSettingsLimits.DefaultSampleRateHz;
     private string _plotTitle = "Simulated data";
     private bool _isUpdatingConfigurationUi;
+    private bool _isSavingRecording;
+    private bool _isUploadingFirmware;
+    private bool _isApplyingDeviceSettings;
+    private bool _isCheckingArduinoCli;
+    private ArduinoDeviceSettings? _pendingDeviceSettings;
 
     public MainWindow()
     {
@@ -58,7 +63,7 @@ public partial class MainWindow : Window
         _plotRefreshTimer.Tick += PlotRefreshTimer_Tick;
         _plotRefreshTimer.Start();
         StartSimulation();
-        UpdateRecordingUi();
+        UpdateWorkflowUi();
 
         Closed += MainWindow_Closed;
     }
@@ -90,7 +95,36 @@ public partial class MainWindow : Window
 
     private void SerialService_MetadataReceived(object? sender, string metadata)
     {
-        Dispatcher.UIThread.Post(() => DeviceResponseText.Text = $"Device response: {metadata}");
+        Dispatcher.UIThread.Post(() =>
+        {
+            DeviceResponseText.Text = $"Device response: {metadata}";
+
+            if (metadata.StartsWith("#ERR ", StringComparison.Ordinal))
+            {
+                _pendingDeviceSettings = null;
+                _isApplyingDeviceSettings = false;
+                StatusText.Text = $"Arduino reported an error: {metadata}";
+                UpdateWorkflowUi();
+                return;
+            }
+
+            if (_pendingDeviceSettings is not null &&
+                ArduinoStatusReport.TryParse(metadata, out ArduinoStatusReport? status))
+            {
+                if (status!.Matches(_pendingDeviceSettings))
+                {
+                    StatusText.Text = $"Device settings verified: {status.ChannelCount} channel(s), {status.AdcBits}-bit ADC, {status.SampleRateHz} Hz.";
+                }
+                else
+                {
+                    StatusText.Text = $"Device settings warning: firmware reported {status.ChannelCount} channel(s), {status.AdcBits}-bit ADC, {status.SampleRateHz} Hz.";
+                }
+
+                _pendingDeviceSettings = null;
+                _isApplyingDeviceSettings = false;
+                UpdateWorkflowUi();
+            }
+        });
     }
 
     private void PlotRefreshTimer_Tick(object? sender, EventArgs e)
@@ -119,7 +153,7 @@ public partial class MainWindow : Window
         }
 
         SignalPlot.Refresh();
-        UpdateRecordingUi();
+        UpdateWorkflowUi();
     }
 
     private SignalSnapshot CreateDisplayedSnapshot(SignalSnapshot rawSnapshot)
@@ -202,6 +236,7 @@ public partial class MainWindow : Window
         _simulatedDataService.Start();
         SimulationButton.Content = "Stop Simulation";
         StatusText.Text = $"Simulation running with {_signalConfiguration.ChannelCount} channel(s) at 200 Hz. Plot refreshes at approximately 30 Hz.";
+        UpdateWorkflowUi();
     }
 
     private async Task StopSimulationAsync()
@@ -209,6 +244,7 @@ public partial class MainWindow : Window
         await _simulatedDataService.StopAsync();
         SimulationButton.Content = "Start Simulation";
         StatusText.Text = $"Simulation stopped. Buffer holds {_signalBuffer.Count} samples.";
+        UpdateWorkflowUi();
     }
 
     private void RefreshPortsButton_Click(object? sender, RoutedEventArgs e)
@@ -254,13 +290,16 @@ public partial class MainWindow : Window
             ApplyActiveChannelCount(clearBuffer: true);
             _plotTitle = "Serial data";
             _serialService.Connect(portName);
+            SerialPortComboBox.SelectedItem = portName;
             ConnectButton.Content = "Disconnect";
             SimulationButton.Content = "Start Simulation";
+            UpdateWorkflowUi();
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
         {
             ConnectButton.Content = "Connect";
             StatusText.Text = $"Unable to connect to {portName}: {ex.Message}";
+            UpdateWorkflowUi();
         }
     }
 
@@ -268,29 +307,42 @@ public partial class MainWindow : Window
     {
         await _serialService.DisconnectAsync();
         ConnectButton.Content = "Connect";
+        UpdateWorkflowUi();
     }
 
     private void StartRecordingButton_Click(object? sender, RoutedEventArgs e)
     {
+        if (_isSavingRecording)
+        {
+            RecordingStatusText.Text = "Wait for save to finish before recording";
+            return;
+        }
+
         _recordingService.Start();
         RecordingStatusText.Text = "Recording";
-        UpdateRecordingUi();
+        UpdateWorkflowUi();
     }
 
     private void StopRecordingButton_Click(object? sender, RoutedEventArgs e)
     {
         _recordingService.Stop();
         RecordingStatusText.Text = "Recording stopped";
-        UpdateRecordingUi();
+        UpdateWorkflowUi();
     }
 
     private async void SaveRecordingButton_Click(object? sender, RoutedEventArgs e)
     {
+        if (_recordingService.IsRecording)
+        {
+            RecordingStatusText.Text = "Stop recording before saving";
+            return;
+        }
+
         IReadOnlyList<RecordedSample> samples = _recordingService.Snapshot();
         if (samples.Count == 0)
         {
             RecordingStatusText.Text = "No recorded samples to save";
-            UpdateRecordingUi();
+            UpdateWorkflowUi();
             return;
         }
 
@@ -298,9 +350,12 @@ public partial class MainWindow : Window
         if (topLevel?.StorageProvider.CanSave != true)
         {
             RecordingStatusText.Text = "CSV save dialog is not available";
-            UpdateRecordingUi();
+            UpdateWorkflowUi();
             return;
         }
+
+        _isSavingRecording = true;
+        UpdateWorkflowUi();
 
         IStorageFile? file = await topLevel.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
         {
@@ -321,7 +376,8 @@ public partial class MainWindow : Window
         if (file is null)
         {
             RecordingStatusText.Text = "Save canceled";
-            UpdateRecordingUi();
+            _isSavingRecording = false;
+            UpdateWorkflowUi();
             return;
         }
 
@@ -336,19 +392,35 @@ public partial class MainWindow : Window
         {
             RecordingStatusText.Text = $"Save failed: {ex.Message}";
         }
+        finally
+        {
+            _isSavingRecording = false;
+        }
 
-        UpdateRecordingUi();
+        UpdateWorkflowUi();
     }
 
     private void ClearRecordingButton_Click(object? sender, RoutedEventArgs e)
     {
+        if (_recordingService.IsRecording)
+        {
+            RecordingStatusText.Text = "Stop recording before clearing";
+            return;
+        }
+
         _recordingService.Clear();
         RecordingStatusText.Text = _recordingService.IsRecording ? "Recording cleared and running" : "Recording cleared";
-        UpdateRecordingUi();
+        UpdateWorkflowUi();
     }
 
     private async void ApplyDeviceSettingsButton_Click(object? sender, RoutedEventArgs e)
     {
+        if (_recordingService.IsRecording)
+        {
+            StatusText.Text = "Stop recording before applying device settings.";
+            return;
+        }
+
         if (!_serialService.IsConnected)
         {
             StatusText.Text = "Connect to Arduino before applying device settings.";
@@ -379,23 +451,33 @@ public partial class MainWindow : Window
 
         try
         {
-            DeviceResponseText.Text = "Device response: settings sent";
+            _isApplyingDeviceSettings = true;
+            _pendingDeviceSettings = settings;
+            DeviceResponseText.Text = "Device response: waiting for #STATUS";
+            UpdateWorkflowUi();
+
             foreach (string command in ArduinoCommandBuilder.BuildApplySettingsSequence(settings))
             {
                 await _serialService.SendLineAsync(command);
             }
 
-            StatusText.Text = $"Applied device settings: {settings.ChannelCount} channel(s), {settings.AdcBits}-bit ADC, {settings.SampleRateHz} Hz.";
+            StatusText.Text = "Device settings sent; waiting for firmware #STATUS verification.";
+            _isApplyingDeviceSettings = false;
+            UpdateWorkflowUi();
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
         {
+            _pendingDeviceSettings = null;
+            _isApplyingDeviceSettings = false;
             StatusText.Text = $"Unable to apply device settings: {ex.Message}";
+            UpdateWorkflowUi();
         }
     }
 
     private async void CheckArduinoCliButton_Click(object? sender, RoutedEventArgs e)
     {
-        CheckArduinoCliButton.IsEnabled = false;
+        _isCheckingArduinoCli = true;
+        UpdateWorkflowUi();
         StatusText.Text = "Checking Arduino CLI...";
 
         try
@@ -405,17 +487,27 @@ public partial class MainWindow : Window
         }
         finally
         {
-            CheckArduinoCliButton.IsEnabled = true;
+            _isCheckingArduinoCli = false;
+            UpdateWorkflowUi();
         }
     }
 
     private async void UploadFirmwareButton_Click(object? sender, RoutedEventArgs e)
     {
-        UploadFirmwareButton.IsEnabled = false;
-        CheckArduinoCliButton.IsEnabled = false;
+        if (_recordingService.IsRecording)
+        {
+            StatusText.Text = "Stop recording before uploading firmware.";
+            return;
+        }
+
+        _isUploadingFirmware = true;
+        UpdateWorkflowUi();
 
         try
         {
+            bool reconnectAfterUpload = _serialService.IsConnected;
+            string? previousPortName = _serialService.PortName;
+
             if (_serialService.IsConnected)
             {
                 StatusText.Text = "Disconnecting serial before firmware upload...";
@@ -429,6 +521,14 @@ public partial class MainWindow : Window
             if (result.Succeeded)
             {
                 RefreshSerialPorts(updateStatus: false);
+                if (reconnectAfterUpload)
+                {
+                    string reconnectPort = result.PortName ?? previousPortName ?? string.Empty;
+                    if (!string.IsNullOrWhiteSpace(reconnectPort))
+                    {
+                        await TryReconnectAfterFirmwareUploadAsync(reconnectPort);
+                    }
+                }
             }
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException or TimeoutException)
@@ -437,21 +537,67 @@ public partial class MainWindow : Window
         }
         finally
         {
-            UploadFirmwareButton.IsEnabled = true;
-            CheckArduinoCliButton.IsEnabled = true;
+            _isUploadingFirmware = false;
+            UpdateWorkflowUi();
         }
     }
 
-    private void UpdateRecordingUi()
+    private async Task TryReconnectAfterFirmwareUploadAsync(string portName)
+    {
+        await Task.Delay(TimeSpan.FromMilliseconds(750));
+
+        try
+        {
+            ApplyActiveChannelCount(clearBuffer: true);
+            _plotTitle = "Serial data";
+            _serialService.Connect(portName);
+            ConnectButton.Content = "Disconnect";
+            SimulationButton.Content = "Start Simulation";
+            StatusText.Text = $"Upload succeeded and reconnected to {portName}.";
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
+        {
+            ConnectButton.Content = "Connect";
+            StatusText.Text = $"Upload succeeded, but reconnect to {portName} failed: {ex.Message}";
+        }
+    }
+
+    private void UpdateWorkflowUi()
     {
         int count = _recordingService.Count;
+        bool isRecording = _recordingService.IsRecording;
+        bool hasRecordedSamples = count > 0;
+        bool isBusy = _isSavingRecording || _isUploadingFirmware || _isApplyingDeviceSettings;
+        bool canEditMetadata = !hasRecordedSamples && !isRecording && !isBusy;
+        bool canEditDeviceSettings = !isRecording && !isBusy;
+
         RecordedSampleCountText.Text = count == 1 ? "1 sample" : $"{count} samples";
-        StartRecordingButton.IsEnabled = !_recordingService.IsRecording;
-        StopRecordingButton.IsEnabled = _recordingService.IsRecording;
-        SaveRecordingButton.IsEnabled = count > 0;
-        ClearRecordingButton.IsEnabled = count > 0 || _recordingService.IsRecording;
-        SignalModeComboBox.IsEnabled = count == 0 && !_recordingService.IsRecording;
-        ChannelCountComboBox.IsEnabled = count == 0 && !_recordingService.IsRecording;
+        StartRecordingButton.IsEnabled = !isRecording && !_isSavingRecording && !_isUploadingFirmware;
+        StopRecordingButton.IsEnabled = isRecording;
+        SaveRecordingButton.IsEnabled = hasRecordedSamples && !isRecording && !_isSavingRecording;
+        ClearRecordingButton.IsEnabled = hasRecordedSamples && !isRecording && !_isSavingRecording;
+
+        SerialPortComboBox.IsEnabled = !_serialService.IsConnected && !_isUploadingFirmware;
+        RefreshPortsButton.IsEnabled = !_serialService.IsConnected && !_isUploadingFirmware;
+        ConnectButton.IsEnabled = !_isUploadingFirmware;
+        SimulationButton.IsEnabled = !_isUploadingFirmware;
+
+        SignalModeComboBox.IsEnabled = canEditMetadata;
+        DisplayModeComboBox.IsEnabled = canEditMetadata;
+        ReferenceVoltageTextBox.IsEnabled = canEditMetadata;
+
+        ChannelCountComboBox.IsEnabled = canEditMetadata && canEditDeviceSettings;
+        AdcBitsTextBox.IsEnabled = canEditMetadata && canEditDeviceSettings;
+        SampleRateHzTextBox.IsEnabled = canEditDeviceSettings;
+        ApplyDeviceSettingsButton.IsEnabled = _serialService.IsConnected && canEditDeviceSettings;
+
+        foreach (TextBox textBox in _channelLabelTextBoxes.Concat(_channelUnitTextBoxes))
+        {
+            textBox.IsEnabled = canEditMetadata;
+        }
+
+        CheckArduinoCliButton.IsEnabled = !_isCheckingArduinoCli && !_isUploadingFirmware;
+        UploadFirmwareButton.IsEnabled = !isRecording && !_isSavingRecording && !_isUploadingFirmware;
     }
 
     private void InitializeConfigurationUi()

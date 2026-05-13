@@ -84,7 +84,7 @@ Reference voltage is currently used only for app-side voltage conversion. It doe
 
 ## Device Settings
 
-Device settings are sent to the Arduino only when a serial connection is active and `Apply Device Settings` is clicked. The app sends `#STOP`, applies the settings, asks for `#STATUS`, then sends `#START`.
+Device settings are sent to the Arduino only when a serial connection is active and `Apply Device Settings` is clicked. The app sends `#STOP`, applies the settings, asks for `#STATUS`, then sends `#START`. The returned `#STATUS` line is checked to verify that `CHANNEL_COUNT`, `ADC_BITS`, and `SAMPLE_RATE_HZ` match the requested values.
 
 Device settings include:
 
@@ -96,6 +96,8 @@ Device settings include:
 The channel count control selects how many values the app expects per serial row and how many channels are plotted and recorded. The default is 2. Single-channel presets such as ECG, PPG / Pulse Oximetry, and Blood Pressure default to 1 channel; Generic two-channel and EMG + Force/Pressure default to 2 channels.
 
 ADC bits configure Arduino `analogReadResolution(adcBits)` after `Apply Device Settings`. The app also uses the selected ADC bits when displaying raw counts as voltage.
+
+Sample Hz is sent to firmware as `#SET SAMPLE_RATE_HZ <value>` after `Apply Device Settings`.
 
 Choose the channel count before starting a recording. If recorded samples are present, clear the recording before changing signal mode or channel count so the exported CSV keeps one consistent shape.
 
@@ -109,6 +111,8 @@ The app can record samples from either simulated mode or a connected serial devi
 4. Click `Clear Recording` to discard the current recording.
 
 Recording is separate from plotting, so the plot continues to refresh on its timer while samples are captured.
+
+While recording is active, controls that would make the recording metadata or device state inconsistent are disabled. Stop recording before changing signal/display/device settings, clearing data, saving CSV, or uploading firmware.
 
 CSV exports use invariant-culture numeric formatting and include timestamps in seconds relative to the start of recording:
 
@@ -193,7 +197,7 @@ To upload firmware from the app:
 2. Click `Check Arduino CLI` and confirm the CLI is available.
 3. Click `Upload Firmware`.
 
-The app uses Arduino CLI to detect connected boards, compile `firmware/arduino/TwoChannelCsvStreamer`, and upload it to the single detected UNO R4 WiFi. If a serial connection is open in the app, the app disconnects before uploading so Arduino CLI can use the port.
+The app uses Arduino CLI to detect connected boards, compile `firmware/arduino/TwoChannelCsvStreamer`, and upload it to the single detected UNO R4 WiFi. If a serial connection is open in the app, the app disconnects before uploading so Arduino CLI can use the port. After a successful upload, the app attempts to reconnect to the uploaded board automatically; if reconnect fails, it leaves the app disconnected and shows a status message.
 
 If no board is detected, check the USB cable, board power, drivers, and the output of `arduino-cli board list`. If multiple UNO R4 WiFi boards are detected, disconnect extras and try again. If upload fails, read the status message, close any other serial monitor using the board, then retry.
 
