@@ -1,0 +1,83 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="760" d:DesignHeight="640"
+        x:Class="BiomedicalSignalPlotter.HelpAboutWindow"
+        Title="Help / About"
+        Width="760"
+        Height="640"
+        MinWidth="640"
+        MinHeight="520"
+        WindowStartupLocation="CenterOwner">
+    <Grid RowDefinitions="*,Auto"
+          RowSpacing="12"
+          Margin="16">
+        <ScrollViewer Grid.Row="0"
+                      VerticalScrollBarVisibility="Auto">
+            <StackPanel Spacing="14">
+                <TextBlock Text="Arduino Biomedical Signal Plotter"
+                           FontSize="22"
+                           FontWeight="SemiBold" />
+
+                <TextBlock Text="Version 0.1 workflow for educational biomedical instrumentation labs."
+                           TextWrapping="Wrap" />
+
+                <TextBlock Text="Quick Start"
+                           FontSize="16"
+                           FontWeight="SemiBold" />
+                <TextBlock TextWrapping="Wrap"
+                           Text="1. Install Arduino CLI if firmware upload is needed.
+2. Connect the Arduino UNO R4 WiFi by USB.
+3. Click Check Arduino CLI.
+4. Click Upload Firmware.
+5. Click Refresh Ports.
+6. Select the Arduino serial port.
+7. Click Connect.
+8. Open Signal Settings.
+9. Choose channel count, ADC bits, reference voltage, display mode, signal labels, and units.
+10. Click Apply Device Settings so channel count, ADC bits, and sample rate are sent to the Arduino firmware.
+11. Configure plot display if needed: choose 1 to 3 vertical plots, route A0-A5 signals, hide signals, set the time window, set Y ranges, and add horizontal reference bars.
+12. Click Start Recording.
+13. Click Stop Recording.
+14. Click Save CSV." />
+
+                <TextBlock Text="Supported Setup"
+                           FontSize="16"
+                           FontWeight="SemiBold" />
+                <TextBlock TextWrapping="Wrap"
+                           Text="Supported board: Arduino UNO R4 WiFi.
+Supported analog channels: A0 through A5.
+Supported channel count: 1 to 6.
+Supported ADC bits: 8 to 14.
+Supported sample rate: 1 to 1000 Hz.
+Supported plot count: 1 to 3 vertical plots.
+Supported reference bars: up to 5 horizontal reference bars per subplot." />
+
+                <TextBlock Text="Control Notes"
+                           FontSize="16"
+                           FontWeight="SemiBold" />
+                <TextBlock TextWrapping="Wrap"
+                           Text="Arduino CLI is required for firmware upload and setup, but not for simulation mode or plotting from an already programmed board.
+Signal Settings controls channel labels, units, signal mode, channel count, ADC bits, reference voltage, and display mode.
+Apply Device Settings sends channel count, ADC bits, and sample rate to the connected Arduino firmware.
+Plot Display controls plot routing, time window, Y-axis ranges, and horizontal reference bars.
+Plot settings and reference bars affect visualization only, not recorded raw data.
+Reference bars are display-only aids. Their values use the current displayed Y-axis units of the subplot.
+Signal and device settings should not be changed during recording.
+Reference voltage is used for app-side voltage conversion, not Arduino hardware ADC reference configuration." />
+
+                <TextBlock Text="Safety"
+                           FontSize="16"
+                           FontWeight="SemiBold" />
+                <TextBlock TextWrapping="Wrap"
+                           Text="This software is for educational signal visualization only. It is not a medical device and must not be used for diagnosis, treatment, monitoring, or clinical decision-making." />
+            </StackPanel>
+        </ScrollViewer>
+
+        <Button Grid.Row="1"
+                Content="Close"
+                HorizontalAlignment="Right"
+                Click="CloseButton_Click" />
+    </Grid>
+</Window>

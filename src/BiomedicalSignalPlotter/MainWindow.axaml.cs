@@ -587,6 +587,12 @@ public partial class MainWindow : Window
         UpdateWorkflowUi();
     }
 
+    private async void HelpButton_Click(object? sender, RoutedEventArgs e)
+    {
+        HelpAboutWindow dialog = new();
+        await dialog.ShowDialog(this);
+    }
+
     private async void ApplyDeviceSettingsButton_Click(object? sender, RoutedEventArgs e)
     {
         if (_recordingService.IsRecording)
@@ -756,6 +762,7 @@ public partial class MainWindow : Window
 
         CheckArduinoCliButton.IsEnabled = !_isCheckingArduinoCli && !_isUploadingFirmware;
         UploadFirmwareButton.IsEnabled = !isRecording && !_isSavingRecording && !_isUploadingFirmware;
+        HelpButton.IsEnabled = !_isUploadingFirmware;
     }
 
     private void ApplyActiveChannelCount(bool clearBuffer)

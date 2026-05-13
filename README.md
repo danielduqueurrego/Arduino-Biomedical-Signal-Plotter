@@ -53,6 +53,42 @@ Run tests:
 dotnet test
 ```
 
+## Quick Start for Students
+
+1. Install Arduino CLI if firmware upload is needed.
+2. Connect an Arduino UNO R4 WiFi by USB.
+3. Click `Check Arduino CLI`.
+4. Click `Upload Firmware`.
+5. Click `Refresh Ports`.
+6. Select the Arduino serial port.
+7. Click `Connect`.
+8. Open `Signal Settings`.
+9. Choose channel count, ADC bits, reference voltage, display mode, signal labels, and units.
+10. Click `Apply Device Settings` so channel count, ADC bits, and sample rate are sent to the Arduino firmware.
+11. Configure plot layout if needed: choose 1 to 3 vertical plots, assign `A0` through `A5` signals to plots, hide signals, set plot time window, set Y-axis ranges, and add horizontal reference bars.
+12. Click `Start Recording`.
+13. Click `Stop Recording`.
+14. Click `Save CSV`.
+
+Arduino CLI is required for firmware upload and setup, but it is not required for simulation mode or plotting from an already programmed Arduino. The supported board is Arduino UNO R4 WiFi. The supported channels are `A0` through `A5`, channel count is 1 to 6, ADC bits are 8 to 14, sample rate is 1 to 1000 Hz, plot count is 1 to 3, and each subplot supports up to 5 horizontal reference bars.
+
+Signal and device settings should not be changed during recording. Plot display settings and reference bars affect visualization only, not recorded raw data. Reference voltage is used for app-side voltage conversion, not hardware ADC reference configuration.
+
+## What Each Control Does
+
+- `Check Arduino CLI`: verifies that `arduino-cli` is installed and available on `PATH`.
+- `Upload Firmware`: detects one connected UNO R4 WiFi, compiles the firmware, uploads it, and reconnects if the app was connected before upload.
+- `Refresh Ports`: refreshes the serial port list.
+- `Connect`: opens or closes the selected serial connection.
+- `Signal Settings`: configures signal mode, active channel count, channel labels and units, ADC bits, reference voltage, display mode, and channel routing.
+- `Apply Device Settings`: sends channel count, ADC bits, and sample rate to the connected Arduino firmware.
+- Plot layout/routing: chooses 1 to 3 vertical plots and assigns each active `A0` through `A5` signal to a plot or `Hidden`.
+- Time window: sets how many seconds of recent data are visible.
+- Y range: sets automatic or manual Y-axis limits per subplot.
+- Reference bars: adds display-only horizontal target lines such as a target ADC count or voltage.
+- `Start Recording` / `Stop Recording`: starts and stops sample capture.
+- `Save CSV`: exports recorded active-channel samples.
+
 ## Display Settings
 
 Click `Signal Settings` to open the detailed signal/channel configuration. The main window keeps only connection, simulation, recording, device, and firmware actions visible so more space is available for plotting.

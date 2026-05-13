@@ -40,6 +40,8 @@ The first version should prove that the app can:
 
 15\. Allow display-only horizontal reference bars on each subplot.
 
+16\. Provide a Help/About panel with the Version 0.1 student workflow, supported ranges, Arduino CLI notes, and educational-use disclaimer.
+
 
 
 \## Not included in Version 0.1
