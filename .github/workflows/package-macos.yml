@@ -1,0 +1,72 @@
+name: Package macOS Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      runtime:
+        description: macOS runtime to package
+        required: true
+        default: osx-arm64
+        type: choice
+        options:
+          - osx-arm64
+          - osx-x64
+          - all
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+jobs:
+  package-macos:
+    name: Build macOS package
+    runs-on: macos-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Resolve package settings
+        shell: bash
+        run: |
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            echo "VERSION=${GITHUB_REF_NAME}" >> "$GITHUB_ENV"
+          else
+            echo "VERSION=v0.1.0" >> "$GITHUB_ENV"
+          fi
+
+          runtime="${{ github.event.inputs.runtime }}"
+          if [[ -z "$runtime" ]]; then
+            runtime="osx-arm64"
+          fi
+
+          echo "PACKAGE_RUNTIME=$runtime" >> "$GITHUB_ENV"
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test --configuration Release --no-build
+
+      - name: Make macOS package script executable
+        run: chmod +x scripts/package-macos.sh
+
+      - name: Package macOS release
+        run: ./scripts/package-macos.sh "$PACKAGE_RUNTIME"
+
+      - name: Upload macOS release artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-release-${{ env.VERSION }}-${{ env.PACKAGE_RUNTIME }}
+          path: artifacts/Biomedical-Instrumentation-Signal-Plotter-*-macos-*.zip
+          if-no-files-found: error

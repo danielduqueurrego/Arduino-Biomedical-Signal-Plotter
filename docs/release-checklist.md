@@ -53,6 +53,10 @@ arduino-cli compile --fqbn arduino:renesas_uno:unor4wifi firmware/arduino/TwoCha
 
 ## macOS Package
 
+- [ ] If no local Mac is available, open GitHub `Actions` and run the `Package macOS Release` workflow manually.
+- [ ] For tag releases, confirm the `Package macOS Release` workflow ran automatically for the `v*` tag.
+- [ ] Download the macOS ZIP artifact from the completed GitHub Actions workflow.
+- [ ] Confirm macOS artifacts are built on GitHub-hosted macOS runners.
 - [ ] On a Mac, run `chmod +x scripts/package-macos.sh`.
 - [ ] On a Mac, run `./scripts/package-macos.sh`.
 - [ ] Optionally run `./scripts/package-macos.sh osx-x64` or `./scripts/package-macos.sh all`.
@@ -60,6 +64,8 @@ arduino-cli compile --fqbn arduino:renesas_uno:unor4wifi firmware/arduino/TwoCha
 - [ ] Test the macOS package on a Mac.
 - [ ] Confirm the `.app` starts without installing .NET.
 - [ ] Confirm the unsigned-app opening instructions are documented.
+- [ ] Confirm the app is unsigned unless signing/notarization is added later.
+- [ ] Use a real Mac for final launch and hardware validation before public release.
 - [ ] Confirm the package includes `firmware/`, `docs/`, `README.md`, and `scripts/upload-uno-r4-wifi.ps1`.
 
 ## GitHub Release

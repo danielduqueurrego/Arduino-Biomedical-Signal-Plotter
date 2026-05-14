@@ -109,6 +109,17 @@ Each macOS ZIP includes `Biomedical Instrumentation Signal Plotter.app`, app ass
 
 The macOS app is unsigned in this workflow. Students may need to approve opening it in macOS security settings or use Control-click, then Open. Arduino CLI is not bundled; students only need Arduino CLI for firmware upload/setup, not for plotting from an already programmed Arduino.
 
+If you do not have a Mac, build the macOS package with GitHub Actions:
+
+1. Open the repository on GitHub.
+2. Go to `Actions`.
+3. Select `Package macOS Release`.
+4. Click `Run workflow`.
+5. Choose `osx-arm64`, `osx-x64`, or `all`.
+6. Download the uploaded macOS release artifact from the completed workflow run.
+
+The workflow also runs automatically for tags matching `v*`. macOS artifacts are built on GitHub-hosted macOS runners. The app is still unsigned unless a future signing/notarization step is added, and a real Mac should still be used for final launch and hardware validation before a public release.
+
 ## App Icon Assets
 
 The recommended editable source icon path is:
