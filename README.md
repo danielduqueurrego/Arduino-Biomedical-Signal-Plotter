@@ -53,6 +53,25 @@ Run tests:
 dotnet test
 ```
 
+## Windows Release Packaging
+
+Create a repeatable Windows v0.1.0 package with:
+
+```powershell
+.\scripts\package-windows.ps1
+```
+
+The script cleans the previous v0.1.0 `win-x64` release output, runs restore/build/test, publishes the Avalonia app in `Release` mode for `win-x64`, and creates:
+
+```text
+artifacts/Biomedical-Instrumentation-Signal-Plotter-v0.1.0-win-x64/
+artifacts/Biomedical-Instrumentation-Signal-Plotter-v0.1.0-win-x64.zip
+```
+
+The package includes the published app, app assets such as `Assets/app-icon-source.png` when present, `firmware/`, `docs/`, `README.md`, `scripts/upload-uno-r4-wifi.ps1`, and any repository license file if present. The app publish is self-contained, so students should not need to install .NET to run the packaged Windows app.
+
+Arduino CLI is not bundled in the release package. Students only need Arduino CLI if they will upload or update firmware; it is not required for plotting from an already programmed Arduino.
+
 ## App Icon Assets
 
 The recommended editable source icon path is:
