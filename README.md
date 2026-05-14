@@ -53,6 +53,11 @@ Run tests:
 dotnet test
 ```
 
+## Release Documentation
+
+- [Student installation guide](docs/student-installation.md)
+- [Instructor release checklist](docs/release-checklist.md)
+
 ## Windows Release Packaging
 
 Create a repeatable Windows v0.1.0 package with:
