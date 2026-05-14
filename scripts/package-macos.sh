@@ -1,17 +1,16 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-VERSION_LABEL="${VERSION_LABEL:-${VERSION:-v0.1.0}}"
-PACKAGE_VERSION="${PACKAGE_VERSION:-${VERSION_LABEL#[vV]}}"
+RELEASE_LABEL="${RELEASE_LABEL:-v0.1.0}"
+PACKAGE_VERSION="${PACKAGE_VERSION:-${RELEASE_LABEL#[vV]}}"
 PACKAGE_VERSION="${PACKAGE_VERSION#[vV]}"
 CONFIGURATION="${CONFIGURATION:-Release}"
 APP_NAME="Biomedical Instrumentation Signal Plotter"
 EXECUTABLE_NAME="BiomedicalSignalPlotter"
 BUNDLE_IDENTIFIER="edu.bmeg.biomedical-instrumentation-signal-plotter"
 
-# MSBuild imports environment variables as properties. If callers pass
-# VERSION=v0.1.0, keep that value only as a release label and prevent it from
-# reaching dotnet as an invalid NuGet/MSBuild Version property.
+# MSBuild imports environment variables as properties. Strip any inherited
+# tag-shaped release variable with this name before invoking dotnet.
 unset VERSION
 
 usage() {
@@ -19,8 +18,8 @@ usage() {
 Usage:
   scripts/package-macos.sh [osx-arm64|osx-x64|all]
 
-Defaults to osx-arm64. Set VERSION_LABEL for artifact names and PACKAGE_VERSION
-for .NET metadata. VERSION_LABEL defaults to v0.1.0 and PACKAGE_VERSION defaults
+Defaults to osx-arm64. Set RELEASE_LABEL for artifact names and PACKAGE_VERSION
+for .NET metadata. RELEASE_LABEL defaults to v0.1.0 and PACKAGE_VERSION defaults
 to the same value without a leading v.
 EOF
 }
@@ -53,8 +52,8 @@ app_project="$repo_root/src/BiomedicalSignalPlotter/BiomedicalSignalPlotter.cspr
 artifacts_root="$repo_root/artifacts"
 version_number="$PACKAGE_VERSION"
 
-if [[ -z "$VERSION_LABEL" ]]; then
-    echo "VERSION_LABEL cannot be empty." >&2
+if [[ -z "$RELEASE_LABEL" ]]; then
+    echo "RELEASE_LABEL cannot be empty." >&2
     exit 1
 fi
 
@@ -129,7 +128,7 @@ popd >/dev/null
 
 for runtime in "${runtimes[@]}"; do
     arch="${runtime#osx-}"
-    package_name="Biomedical-Instrumentation-Signal-Plotter-$VERSION_LABEL-macos-$arch"
+    package_name="Biomedical-Instrumentation-Signal-Plotter-$RELEASE_LABEL-macos-$arch"
     release_root="$artifacts_root/$package_name"
     publish_dir="$release_root/publish"
     bundle_path="$release_root/$APP_NAME.app"

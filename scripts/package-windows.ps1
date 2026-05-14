@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [string]$Version = 'v0.1.0',
+    [string]$ReleaseLabel = 'v0.1.0',
     [string]$PackageVersion = '',
     [string]$Runtime = 'win-x64',
     [string]$Configuration = 'Release'
@@ -9,13 +9,12 @@ param(
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
-$versionLabel = $Version
-if ([string]::IsNullOrWhiteSpace($versionLabel)) {
-    throw 'Version label cannot be empty.'
+if ([string]::IsNullOrWhiteSpace($ReleaseLabel)) {
+    throw 'ReleaseLabel cannot be empty.'
 }
 
 if ([string]::IsNullOrWhiteSpace($PackageVersion)) {
-    $PackageVersion = $versionLabel -replace '^[vV]', ''
+    $PackageVersion = $ReleaseLabel -replace '^[vV]', ''
 }
 else {
     $PackageVersion = $PackageVersion -replace '^[vV]', ''
@@ -25,7 +24,7 @@ if ([string]::IsNullOrWhiteSpace($PackageVersion) -or $PackageVersion.StartsWith
     throw "PackageVersion must be a .NET/NuGet version without a leading v. Value: $PackageVersion"
 }
 
-$packageName = "Biomedical-Instrumentation-Signal-Plotter-$versionLabel-$Runtime"
+$packageName = "Biomedical-Instrumentation-Signal-Plotter-$ReleaseLabel-$Runtime"
 $repoRoot = Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..')
 $appProject = Join-Path $repoRoot 'src\BiomedicalSignalPlotter\BiomedicalSignalPlotter.csproj'
 $artifactsRoot = Join-Path $repoRoot 'artifacts'

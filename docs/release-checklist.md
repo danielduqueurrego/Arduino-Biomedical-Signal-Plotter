@@ -58,6 +58,8 @@ arduino-cli compile --fqbn arduino:renesas_uno:unor4wifi firmware/arduino/TwoCha
 - [ ] Download the macOS ZIP artifact from the completed GitHub Actions workflow.
 - [ ] Confirm macOS artifacts are built on GitHub-hosted macOS runners.
 - [ ] Confirm release tags use a leading `v` such as `v0.1.0`, while .NET/MSBuild/NuGet metadata uses `0.1.0` without the leading `v`.
+- [ ] Confirm release workflows and scripts use `RELEASE_LABEL` for `v0.1.0` labels and do not expose an environment variable named `VERSION` to dotnet commands.
+- [ ] If a tag-triggered workflow used an old workflow file, rerun the workflow manually from `main` or recreate the tag after the workflow fix is merged.
 - [ ] On a Mac, run `chmod +x scripts/package-macos.sh`.
 - [ ] On a Mac, run `./scripts/package-macos.sh`.
 - [ ] Optionally run `./scripts/package-macos.sh osx-x64` or `./scripts/package-macos.sh all`.

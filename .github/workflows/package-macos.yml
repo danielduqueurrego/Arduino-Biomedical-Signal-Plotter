@@ -37,40 +37,40 @@ jobs:
         shell: bash
         run: |
           if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
-            version_label="${GITHUB_REF_NAME}"
+            release_label="${GITHUB_REF_NAME}"
           else
-            version_label="v0.1.0"
+            release_label="${RELEASE_LABEL:-v0.1.0}"
           fi
 
-          package_version="${version_label#[vV]}"
+          package_version="${release_label#[vV]}"
 
           runtime="${{ github.event.inputs.runtime }}"
           if [[ -z "$runtime" ]]; then
             runtime="osx-arm64"
           fi
 
-          echo "VERSION_LABEL=$version_label" >> "$GITHUB_ENV"
+          echo "RELEASE_LABEL=$release_label" >> "$GITHUB_ENV"
           echo "PACKAGE_VERSION=$package_version" >> "$GITHUB_ENV"
           echo "PACKAGE_RUNTIME=$runtime" >> "$GITHUB_ENV"
 
       - name: Restore
-        run: dotnet restore -p:Version="$PACKAGE_VERSION" -p:PackageVersion="$PACKAGE_VERSION"
+        run: env -u VERSION dotnet restore -p:Version="$PACKAGE_VERSION" -p:PackageVersion="$PACKAGE_VERSION"
 
       - name: Build
-        run: dotnet build --configuration Release --no-restore -p:Version="$PACKAGE_VERSION" -p:PackageVersion="$PACKAGE_VERSION"
+        run: env -u VERSION dotnet build --configuration Release --no-restore -p:Version="$PACKAGE_VERSION" -p:PackageVersion="$PACKAGE_VERSION"
 
       - name: Test
-        run: dotnet test --configuration Release --no-build -p:Version="$PACKAGE_VERSION" -p:PackageVersion="$PACKAGE_VERSION"
+        run: env -u VERSION dotnet test --configuration Release --no-build -p:Version="$PACKAGE_VERSION" -p:PackageVersion="$PACKAGE_VERSION"
 
       - name: Make macOS package script executable
         run: chmod +x scripts/package-macos.sh
 
       - name: Package macOS release
-        run: VERSION_LABEL="$VERSION_LABEL" PACKAGE_VERSION="$PACKAGE_VERSION" ./scripts/package-macos.sh "$PACKAGE_RUNTIME"
+        run: env -u VERSION RELEASE_LABEL="$RELEASE_LABEL" PACKAGE_VERSION="$PACKAGE_VERSION" ./scripts/package-macos.sh "$PACKAGE_RUNTIME"
 
       - name: Upload macOS release artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: macos-release-${{ env.VERSION_LABEL }}-${{ env.PACKAGE_RUNTIME }}
+          name: macos-release-${{ env.RELEASE_LABEL }}-${{ env.PACKAGE_RUNTIME }}
           path: artifacts/Biomedical-Instrumentation-Signal-Plotter-*-macos-*.zip
           if-no-files-found: error
