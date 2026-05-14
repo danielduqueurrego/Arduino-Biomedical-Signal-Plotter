@@ -1,6 +1,7 @@
 [CmdletBinding()]
 param(
     [string]$Version = 'v0.1.0',
+    [string]$PackageVersion = '',
     [string]$Runtime = 'win-x64',
     [string]$Configuration = 'Release'
 )
@@ -8,13 +9,30 @@ param(
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
-$packageName = "Biomedical-Instrumentation-Signal-Plotter-$Version-$Runtime"
+$versionLabel = $Version
+if ([string]::IsNullOrWhiteSpace($versionLabel)) {
+    throw 'Version label cannot be empty.'
+}
+
+if ([string]::IsNullOrWhiteSpace($PackageVersion)) {
+    $PackageVersion = $versionLabel -replace '^[vV]', ''
+}
+else {
+    $PackageVersion = $PackageVersion -replace '^[vV]', ''
+}
+
+if ([string]::IsNullOrWhiteSpace($PackageVersion) -or $PackageVersion.StartsWith('v', [StringComparison]::OrdinalIgnoreCase)) {
+    throw "PackageVersion must be a .NET/NuGet version without a leading v. Value: $PackageVersion"
+}
+
+$packageName = "Biomedical-Instrumentation-Signal-Plotter-$versionLabel-$Runtime"
 $repoRoot = Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..')
 $appProject = Join-Path $repoRoot 'src\BiomedicalSignalPlotter\BiomedicalSignalPlotter.csproj'
 $artifactsRoot = Join-Path $repoRoot 'artifacts'
 $releaseRoot = Join-Path $artifactsRoot $packageName
 $publishDir = Join-Path $releaseRoot 'app'
 $zipPath = Join-Path $artifactsRoot "$packageName.zip"
+$dotnetVersionProperties = @("/p:Version=$PackageVersion", "/p:PackageVersion=$PackageVersion")
 
 function Invoke-CheckedCommand {
     param(
@@ -67,10 +85,17 @@ if (Test-Path -LiteralPath $zipPath) {
 New-Item -ItemType Directory -Path $releaseRoot -Force | Out-Null
 
 Push-Location $repoRoot
+$hadEnvironmentVersion = Test-Path Env:VERSION
+$previousEnvironmentVersion = if ($hadEnvironmentVersion) { $env:VERSION } else { $null }
+
 try {
-    Invoke-CheckedCommand -FileName 'dotnet' -Arguments @('restore')
-    Invoke-CheckedCommand -FileName 'dotnet' -Arguments @('build', '--configuration', $Configuration, '--no-restore')
-    Invoke-CheckedCommand -FileName 'dotnet' -Arguments @('test', '--configuration', $Configuration, '--no-build')
+    if ($hadEnvironmentVersion) {
+        Remove-Item Env:VERSION
+    }
+
+    Invoke-CheckedCommand -FileName 'dotnet' -Arguments (@('restore') + $dotnetVersionProperties)
+    Invoke-CheckedCommand -FileName 'dotnet' -Arguments (@('build', '--configuration', $Configuration, '--no-restore') + $dotnetVersionProperties)
+    Invoke-CheckedCommand -FileName 'dotnet' -Arguments (@('test', '--configuration', $Configuration, '--no-build') + $dotnetVersionProperties)
     Invoke-CheckedCommand -FileName 'dotnet' -Arguments @(
         'publish',
         $appProject,
@@ -82,12 +107,18 @@ try {
         'true',
         '--output',
         $publishDir,
+        "/p:Version=$PackageVersion",
+        "/p:PackageVersion=$PackageVersion",
         '/p:PublishSingleFile=true',
         '/p:IncludeNativeLibrariesForSelfExtract=true',
         '/p:EnableCompressionInSingleFile=true'
     )
 }
 finally {
+    if ($hadEnvironmentVersion) {
+        $env:VERSION = $previousEnvironmentVersion
+    }
+
     Pop-Location
 }
 

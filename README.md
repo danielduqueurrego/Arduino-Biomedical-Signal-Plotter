@@ -120,6 +120,8 @@ If you do not have a Mac, build the macOS package with GitHub Actions:
 
 The workflow also runs automatically for tags matching `v*`. macOS artifacts are built on GitHub-hosted macOS runners. The app is still unsigned unless a future signing/notarization step is added, and a real Mac should still be used for final launch and hardware validation before a public release.
 
+Release tags and artifact labels use a leading `v`, such as `v0.1.0`. .NET/MSBuild/NuGet version metadata uses the sanitized form without the leading `v`, such as `0.1.0`; the packaging scripts and GitHub Actions workflow handle this conversion.
+
 ## App Icon Assets
 
 The recommended editable source icon path is:

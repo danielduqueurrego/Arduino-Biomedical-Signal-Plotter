@@ -37,36 +37,40 @@ jobs:
         shell: bash
         run: |
           if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
-            echo "VERSION=${GITHUB_REF_NAME}" >> "$GITHUB_ENV"
+            version_label="${GITHUB_REF_NAME}"
           else
-            echo "VERSION=v0.1.0" >> "$GITHUB_ENV"
+            version_label="v0.1.0"
           fi
+
+          package_version="${version_label#[vV]}"
 
           runtime="${{ github.event.inputs.runtime }}"
           if [[ -z "$runtime" ]]; then
             runtime="osx-arm64"
           fi
 
+          echo "VERSION_LABEL=$version_label" >> "$GITHUB_ENV"
+          echo "PACKAGE_VERSION=$package_version" >> "$GITHUB_ENV"
           echo "PACKAGE_RUNTIME=$runtime" >> "$GITHUB_ENV"
 
       - name: Restore
-        run: dotnet restore
+        run: dotnet restore -p:Version="$PACKAGE_VERSION" -p:PackageVersion="$PACKAGE_VERSION"
 
       - name: Build
-        run: dotnet build --configuration Release --no-restore
+        run: dotnet build --configuration Release --no-restore -p:Version="$PACKAGE_VERSION" -p:PackageVersion="$PACKAGE_VERSION"
 
       - name: Test
-        run: dotnet test --configuration Release --no-build
+        run: dotnet test --configuration Release --no-build -p:Version="$PACKAGE_VERSION" -p:PackageVersion="$PACKAGE_VERSION"
 
       - name: Make macOS package script executable
         run: chmod +x scripts/package-macos.sh
 
       - name: Package macOS release
-        run: ./scripts/package-macos.sh "$PACKAGE_RUNTIME"
+        run: VERSION_LABEL="$VERSION_LABEL" PACKAGE_VERSION="$PACKAGE_VERSION" ./scripts/package-macos.sh "$PACKAGE_RUNTIME"
 
       - name: Upload macOS release artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: macos-release-${{ env.VERSION }}-${{ env.PACKAGE_RUNTIME }}
+          name: macos-release-${{ env.VERSION_LABEL }}-${{ env.PACKAGE_RUNTIME }}
           path: artifacts/Biomedical-Instrumentation-Signal-Plotter-*-macos-*.zip
           if-no-files-found: error

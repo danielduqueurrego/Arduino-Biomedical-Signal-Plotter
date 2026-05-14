@@ -1,19 +1,27 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-VERSION="${VERSION:-v0.1.0}"
+VERSION_LABEL="${VERSION_LABEL:-${VERSION:-v0.1.0}}"
+PACKAGE_VERSION="${PACKAGE_VERSION:-${VERSION_LABEL#[vV]}}"
+PACKAGE_VERSION="${PACKAGE_VERSION#[vV]}"
 CONFIGURATION="${CONFIGURATION:-Release}"
 APP_NAME="Biomedical Instrumentation Signal Plotter"
 EXECUTABLE_NAME="BiomedicalSignalPlotter"
 BUNDLE_IDENTIFIER="edu.bmeg.biomedical-instrumentation-signal-plotter"
+
+# MSBuild imports environment variables as properties. If callers pass
+# VERSION=v0.1.0, keep that value only as a release label and prevent it from
+# reaching dotnet as an invalid NuGet/MSBuild Version property.
+unset VERSION
 
 usage() {
     cat <<'EOF'
 Usage:
   scripts/package-macos.sh [osx-arm64|osx-x64|all]
 
-Defaults to osx-arm64. Set VERSION or CONFIGURATION in the environment to
-override the default v0.1.0 Release package.
+Defaults to osx-arm64. Set VERSION_LABEL for artifact names and PACKAGE_VERSION
+for .NET metadata. VERSION_LABEL defaults to v0.1.0 and PACKAGE_VERSION defaults
+to the same value without a leading v.
 EOF
 }
 
@@ -43,7 +51,17 @@ script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(cd "$script_dir/.." && pwd)"
 app_project="$repo_root/src/BiomedicalSignalPlotter/BiomedicalSignalPlotter.csproj"
 artifacts_root="$repo_root/artifacts"
-version_number="${VERSION#v}"
+version_number="$PACKAGE_VERSION"
+
+if [[ -z "$VERSION_LABEL" ]]; then
+    echo "VERSION_LABEL cannot be empty." >&2
+    exit 1
+fi
+
+if [[ -z "$PACKAGE_VERSION" || "$PACKAGE_VERSION" == [vV]* ]]; then
+    echo "PACKAGE_VERSION must be a .NET/NuGet version without a leading v. Value: $PACKAGE_VERSION" >&2
+    exit 1
+fi
 
 run_checked() {
     echo
@@ -104,14 +122,14 @@ fi
 mkdir -p "$artifacts_root"
 
 pushd "$repo_root" >/dev/null
-run_checked dotnet restore
-run_checked dotnet build --configuration "$CONFIGURATION" --no-restore
-run_checked dotnet test --configuration "$CONFIGURATION" --no-build
+run_checked dotnet restore -p:Version="$PACKAGE_VERSION" -p:PackageVersion="$PACKAGE_VERSION"
+run_checked dotnet build --configuration "$CONFIGURATION" --no-restore -p:Version="$PACKAGE_VERSION" -p:PackageVersion="$PACKAGE_VERSION"
+run_checked dotnet test --configuration "$CONFIGURATION" --no-build -p:Version="$PACKAGE_VERSION" -p:PackageVersion="$PACKAGE_VERSION"
 popd >/dev/null
 
 for runtime in "${runtimes[@]}"; do
     arch="${runtime#osx-}"
-    package_name="Biomedical-Instrumentation-Signal-Plotter-$VERSION-macos-$arch"
+    package_name="Biomedical-Instrumentation-Signal-Plotter-$VERSION_LABEL-macos-$arch"
     release_root="$artifacts_root/$package_name"
     publish_dir="$release_root/publish"
     bundle_path="$release_root/$APP_NAME.app"
@@ -129,6 +147,8 @@ for runtime in "${runtimes[@]}"; do
         --runtime "$runtime" \
         --self-contained true \
         --output "$publish_dir" \
+        -p:Version="$PACKAGE_VERSION" \
+        -p:PackageVersion="$PACKAGE_VERSION" \
         -p:PublishSingleFile=true \
         -p:IncludeNativeLibrariesForSelfExtract=true \
         -p:EnableCompressionInSingleFile=true
