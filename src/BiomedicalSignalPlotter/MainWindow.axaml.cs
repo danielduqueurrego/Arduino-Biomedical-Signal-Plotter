@@ -15,6 +15,8 @@ namespace BiomedicalSignalPlotter;
 public partial class MainWindow : Window
 {
     private const string AppTitle = "Biomedical Instrumentation Signal Plotter";
+    private const float LiveSignalLineWidth = 1.5f;
+    private const float ReferenceBarLineWidth = 1.25f;
     private static readonly string AppIconOutputPath = Path.Combine(
         AppContext.BaseDirectory,
         "Assets",
@@ -175,6 +177,8 @@ public partial class MainWindow : Window
                         displayedSnapshot.TimeSeconds,
                         displayedSnapshot.Channels[channelIndex]);
 
+                    channelPlot.MarkerSize = 0;
+                    channelPlot.LineWidth = LiveSignalLineWidth;
                     channelPlot.LegendText = FormatLegendText(
                         _signalConfiguration.Channels[channelIndex].Label,
                         channelIndex);
@@ -255,6 +259,8 @@ public partial class MainWindow : Window
             var barPlot = plot.Plot.Add.Scatter(
                 new double[] { xMinimum, xMaximum },
                 new double[] { referenceBar.Value, referenceBar.Value });
+            barPlot.MarkerSize = 0;
+            barPlot.LineWidth = ReferenceBarLineWidth;
             barPlot.LegendText = string.IsNullOrWhiteSpace(referenceBar.Label)
                 ? $"Reference {barIndex + 1}"
                 : referenceBar.Label;
