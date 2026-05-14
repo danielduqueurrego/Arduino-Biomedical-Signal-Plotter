@@ -1,6 +1,6 @@
-# Arduino-Biomedical-Signal-Plotter
+# Biomedical Instrumentation Signal Plotter
 
-A lightweight cross-platform desktop app for plotting Arduino-based biomedical instrumentation signals in real time.
+Biomedical Instrumentation Signal Plotter is a lightweight cross-platform desktop app for plotting Arduino-based biomedical instrumentation signals in real time.
 
 ## Purpose
 
@@ -52,6 +52,16 @@ Run tests:
 ```powershell
 dotnet test
 ```
+
+## App Icon Assets
+
+The recommended editable source icon path is:
+
+```text
+src/BiomedicalSignalPlotter/Assets/app-icon-source.png
+```
+
+Use a 1024x1024 PNG for the source image. When this file exists, the development build copies it to the app output and uses it as the Avalonia window icon where practical. Release packaging may later generate platform-specific icons from this source, such as Windows `.ico` and macOS `.icns` files, without adding icon conversion dependencies to the app project.
 
 ## Quick Start for Students
 

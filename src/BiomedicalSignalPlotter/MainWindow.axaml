@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d" d:DesignWidth="1000" d:DesignHeight="650"
         x:Class="BiomedicalSignalPlotter.MainWindow"
-        Title="Arduino Biomedical Signal Plotter"
+        Title="Biomedical Instrumentation Signal Plotter"
         Width="1120"
         Height="740"
         MinWidth="960"
@@ -14,7 +14,7 @@
           RowSpacing="12"
           Margin="16">
         <TextBlock Grid.Row="0"
-                   Text="Arduino Biomedical Signal Plotter"
+                   Text="Biomedical Instrumentation Signal Plotter"
                    FontSize="24"
                    FontWeight="SemiBold" />
 

@@ -14,6 +14,11 @@ namespace BiomedicalSignalPlotter;
 
 public partial class MainWindow : Window
 {
+    private const string AppTitle = "Biomedical Instrumentation Signal Plotter";
+    private static readonly string AppIconOutputPath = Path.Combine(
+        AppContext.BaseDirectory,
+        "Assets",
+        "app-icon-source.png");
     private const int BufferCapacity = 2_000;
     private readonly CircularSignalBuffer _signalBuffer = new(BufferCapacity);
     private readonly ISerialService _serialService = new SerialService();
@@ -40,6 +45,7 @@ public partial class MainWindow : Window
             _firmwareInfoService.SketchFolderPath);
 
         InitializeComponent();
+        ApplyAppBranding();
 
         _plots = [SignalPlot1, SignalPlot2, SignalPlot3];
         ApplyActiveChannelCount(clearBuffer: false);
@@ -60,6 +66,25 @@ public partial class MainWindow : Window
         StatusText.Text = "Connect to an Arduino UNO R4 WiFi to begin plotting.";
 
         Closed += MainWindow_Closed;
+    }
+
+    private void ApplyAppBranding()
+    {
+        Title = AppTitle;
+
+        if (!File.Exists(AppIconOutputPath))
+        {
+            return;
+        }
+
+        try
+        {
+            Icon = new WindowIcon(AppIconOutputPath);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException or ArgumentException or NotSupportedException)
+        {
+            // The source icon is optional during development, so an unreadable image should not stop the app.
+        }
     }
 
     private void ConfigurePlots()

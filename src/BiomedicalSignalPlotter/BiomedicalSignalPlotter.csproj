@@ -4,9 +4,20 @@
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <AssemblyTitle>Biomedical Instrumentation Signal Plotter</AssemblyTitle>
+    <Product>Biomedical Instrumentation Signal Plotter</Product>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    <!-- Icon workflow:
+         Keep the editable source icon at Assets/app-icon-source.png, preferably as a 1024x1024 PNG.
+         Later release packaging can generate platform icons from it, such as Assets/app-icon.ico
+         for Windows and Assets/app-icon.icns for macOS, without adding conversion dependencies here. -->
+    <ApplicationIcon Condition="Exists('Assets\app-icon.ico')">Assets\app-icon.ico</ApplicationIcon>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Update="Assets\app-icon-source.png" Condition="Exists('Assets\app-icon-source.png')" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Avalonia" Version="11.3.4" />

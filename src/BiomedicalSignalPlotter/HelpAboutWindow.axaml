@@ -16,7 +16,7 @@
         <ScrollViewer Grid.Row="0"
                       VerticalScrollBarVisibility="Auto">
             <StackPanel Spacing="14">
-                <TextBlock Text="Arduino Biomedical Signal Plotter"
+                <TextBlock Text="Biomedical Instrumentation Signal Plotter"
                            FontSize="22"
                            FontWeight="SemiBold" />
 
